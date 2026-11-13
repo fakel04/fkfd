@@ -10,7 +10,7 @@ import {TaskLift,captureTaskLayout,animateTaskLayout} from './task-motion';
 import {reorderTasks} from './task-sort';
 import {flushSync} from 'react-dom';
 import {TriangleAlert} from 'lucide-react';
-import {noteEdit} from './board-merge';
+import {noteEdit,equal} from './board-merge';
 import {SyncConflicts} from './sync-conflicts';
 import {ShieldCheck,Eye,LogOut} from 'lucide-react';
 import { MasonryNotes } from './masonry-notes';
@@ -51,12 +51,13 @@ export default function Home(){
  const transferMotion=useTaskTransferMotion();
  const conflict=offline.conflicts.length>0;const demo=false;const latest=useRef(board);latest.current=board;
  const writeAllowed=useRef(false);writeAllowed.current=ready&&!conflict&&!offline.storageFailed&&canWrite(session?.role??null);
- const editorOriginal=useRef<Note|null>(null);const draftId=useRef('');const draftHydrated=useRef(false);
+ const editorOriginal=useRef<Note|null>(null);const editorStart=useRef<Note|null>(null);const [confirmCancel,setConfirmCancel]=useState(false);const draftId=useRef('');const draftHydrated=useRef(false);
  const [organizing,setOrganizing]=useState(false);
  const [view,setView]=useState('all'); const [query,setQuery]=useState(''); const [layout,setLayout]=useState<'grid'|'list'>('grid'); const [sidebar,setSidebar]=useState(false);
  const editorHistory=useEditorHistory();const {value:editor,set:setEditor,reset:resetEditor}=editorHistory;const editorElement=useRef<HTMLDivElement>(null);
  const [isNew,setIsNew]=useState(false); const [quick,setQuick]=useState(''); const [categoryModal,setCategoryModal]=useState(false); const [newCategory,setNewCategory]=useState('');
  useEffect(()=>{try{const saved=localStorage.getItem('oblaka-board-layout');if(saved==='grid'||saved==='list')setLayout(saved)}catch{}},[]);
+ function resetEditorTo(note:Note,start:Note|null=note){editorStart.current=structuredClone(start);setConfirmCancel(false);resetEditor(note)}
  function chooseLayout(value:'grid'|'list'){setLayout(value);try{localStorage.setItem('oblaka-board-layout',value)}catch{}}
  const [toast,setToast]=useState(''); const [palette,setPalette]=useState<string|null>(null);
  const [dragVisual,setDragVisual]=useState<{x:number;y:number;label:string}|null>(null); const drag=useRef<Drag|null>(null);const dragLanding=useRef<(()=>void)|null>(null);
@@ -81,7 +82,7 @@ export default function Home(){
  useEffect(()=>{
   if(!ready)return;
   if(!draftHydrated.current){draftHydrated.current=true;const saved=[...offline.drafts].sort((a,b)=>b.updatedAt-a.updatedAt)[0];
-   if(saved){draftId.current=uid();void controller.adoptDraft(saved,draftId.current).catch(()=>{});editorOriginal.current=saved.original;resetEditor(saved.note);setIsNew(!saved.original);notify('Восстановлен черновик с этого устройства')}return;
+   if(saved){draftId.current=uid();void controller.adoptDraft(saved,draftId.current).catch(()=>{});editorOriginal.current=saved.original;resetEditorTo(saved.note,saved.original);setIsNew(!saved.original);notify('Восстановлен черновик с этого устройства')}return;
   }
   if(!draftId.current)return;
   void controller.draft(editor?{id:draftId.current,original:editorOriginal.current,note:editor,updatedAt:Date.now()}:null,draftId.current).catch(()=>{});
@@ -150,8 +151,8 @@ export default function Home(){
   dragLanding.current?.();dragLanding.current=animateTaskLayout(before);
  }
 
- function openNew(list=false){if(!writeAllowed.current)return;const n=blank(board.categories.includes(view)?view:'');n.title=quick;if(list)n.tasks=[{id:uid(),text:'',done:false}];setQuick('');editorOriginal.current=null;draftId.current=uid();setIsNew(true);resetEditor(n)}
- function openEditor(note:Note){editorOriginal.current=structuredClone(note);draftId.current=uid();const draft=structuredClone(note);if(writeAllowed.current)draft.tasks=expandTaskLines(draft.tasks);resetEditor(draft);setIsNew(false)}
+ function openNew(list=false){if(!writeAllowed.current)return;const n=blank(board.categories.includes(view)?view:'');n.title=quick;if(list)n.tasks=[{id:uid(),text:'',done:false}];setQuick('');editorOriginal.current=null;draftId.current=uid();setIsNew(true);resetEditorTo(n)}
+ function openEditor(note:Note){editorOriginal.current=structuredClone(note);draftId.current=uid();const draft=structuredClone(note);if(writeAllowed.current)draft.tasks=expandTaskLines(draft.tasks);resetEditorTo(draft);setIsNew(false)}
  function stepEditorHistory(direction:'undo'|'redo'){
   if(!writeAllowed.current||!editor||(direction==='undo'?!editorHistory.canUndo:!editorHistory.canRedo))return;
   const root=editorElement.current,active=document.activeElement;
@@ -172,6 +173,14 @@ export default function Home(){
  }
  function saveEditor(){if(conflict||offline.storageFailed){notify('Сначала сохраните копию и разрешите проблему синхронизации.');return;}if(!writeAllowed.current){setEditor(null);return;}saveEditorWith({})}
  function saveEditorWith(changes:Partial<Note>){if(!editor)return;const n={...editor,...changes,title:editor.title.trim(),tasks:prepareTaskList(editor.tasks)};if(!n.title&&!n.text.trim()&&!n.tasks.length){setEditor(null);return;}if(commitEditor(n)){void save();setEditor(null)}}
+ // Closing via Done, Escape or the backdrop saves; only Cancel discards, so ask first.
+ function editorDirty(){
+  if(!editor)return false;
+  if(isNew)return !!(editor.title.trim()||editor.text.trim()||editor.tasks.some(t=>t.text.trim()));
+  return !equal(editor,editorStart.current);
+ }
+ function discardEditor(){setConfirmCancel(false);setEditor(null)}
+ function cancelEditor(){if(editorDirty())setConfirmCancel(true);else discardEditor()}
  function addTask(n:Note,text:string){if(text.trim())patch(n.id,{tasks:[...n.tasks,{id:uid(),text:text.trim(),done:false}]})}
  function toggleTaskFocus(noteId:string,taskId:string,fromEditor=false){
   if(!ready||conflict||!writeAllowed.current)return;
@@ -191,7 +200,7 @@ export default function Home(){
   update(next);
   // A cross-cloud transfer is committed immediately. Start a new draft history
   // so undo cannot resurrect the transferred task in two clouds.
-  if(fromEditor){editorOriginal.current=structuredClone(next.notes.find(n=>n.id===noteId)!);resetEditor(editorOriginal.current);setIsNew(false)}
+  if(fromEditor){editorOriginal.current=structuredClone(next.notes.find(n=>n.id===noteId)!);resetEditorTo(editorOriginal.current!);setIsNew(false)}
   });
   notify(returning?`Возвращено в «${destination}»`:'Перенесено в «Задачи»');
  }
@@ -224,7 +233,7 @@ export default function Home(){
   if(!destination)return;
   transferMotion(noteId,taskId,destination.id,destination.title||'Без названия',fromEditor,()=>{
   update(next);void save();
-  if(fromEditor){editorOriginal.current=structuredClone(next.notes.find(n=>n.id===noteId)!);resetEditor(editorOriginal.current);setIsNew(false)}
+  if(fromEditor){editorOriginal.current=structuredClone(next.notes.find(n=>n.id===noteId)!);resetEditorTo(editorOriginal.current!);setIsNew(false)}
   setTaskAction(null);
   });
   notify('Перенесено в «'+(toId==='__origin__'?sourceTitle(base,task!):next.notes.find(n=>n.id===toId)?.title||'Без названия')+'»');
@@ -319,7 +328,7 @@ export default function Home(){
      <TriangleAlert size={18}/>
      <span>{notice.message}</span>
      <button onClick={exportBoard}>Скачать копию</button>
-     {!conflict&&!offline.storageFailed&&<button disabled={offline.syncing} onClick={()=>void load()}>Повторить</button>}
+     {!conflict&&!offline.storageFailed&&!offline.tooLarge&&<button disabled={offline.syncing} onClick={()=>void load()}>Повторить</button>}
     </div>}
     {offline.legacy&&<div className="error-banner"><span>Найдена старая несинхронизированная копия. Скачайте её для сверки с текущей доской.</span><button onClick={()=>{downloadJSON(offline.legacy,'oblaka-recovered.json')}}>Скачать копию</button></div>}
     {!canEdit&&!conflict&&<div className="viewer-notice"><Eye size={15}/>Общая доска · только просмотр</div>}
@@ -360,10 +369,11 @@ export default function Home(){
     {canEdit&&<div className="editor-settings"><div className="color-options">{colors.map((c,i)=><button key={c} className={'swatch color-'+c+(editor.color===c?' selected':'')} aria-label={colorNames[i]} title={colorNames[i]} onClick={()=>setEditor({...editor,color:c})}>{editor.color===c&&<Check size={14}/>}</button>)}</div>
     <EditorHistoryControls canUndo={editorHistory.canUndo} canRedo={editorHistory.canRedo} onUndo={()=>stepEditorHistory('undo')} onRedo={()=>stepEditorHistory('redo')}/>
     </div>}
-    {offline.storageFailed&&<small className="editor-save-status" role="alert">{error}</small>}
-    <div className="editor-footer">{canEdit&&!isNew&&!isFocusNote(editor)&&<div className="editor-extra-actions"><button className="icon-button" aria-label={editor.archived?'Вернуть на доску':'В архив'} onClick={()=>saveEditorWith({archived:!editor.archived})}><Archive size={21}/></button><button className="icon-button" aria-label="В корзину" onClick={()=>saveEditorWith({deleted:true})}><Trash2 size={21}/></button></div>}{canEdit&&<button className="text-button" onClick={()=>setEditor(null)}>Отменить</button>}<button className="primary" onClick={saveEditor}><Check size={17}/>Готово</button></div>
+    {(offline.storageFailed||offline.tooLarge)&&<small className="editor-save-status" role="alert">{offline.tooLarge?notice?.message:error}</small>}
+    <div className="editor-footer">{canEdit&&!isNew&&!isFocusNote(editor)&&<div className="editor-extra-actions"><button className="icon-button" aria-label={editor.archived?'Вернуть на доску':'В архив'} onClick={()=>saveEditorWith({archived:!editor.archived})}><Archive size={21}/></button><button className="icon-button" aria-label="В корзину" onClick={()=>saveEditorWith({deleted:true})}><Trash2 size={21}/></button></div>}{canEdit&&<button className="text-button" onClick={cancelEditor}>Отменить</button>}<button className="primary" onClick={saveEditor}><Check size={17}/>Готово</button></div>
    </div>
   </Modal>}
+  {editor&&confirmCancel&&<Modal focusPanel label="Отменить изменения" onClose={()=>setConfirmCancel(false)}><div className="small-modal"><h2>Отменить изменения?</h2><p>{isNew?'Новое облако не будет создано.':'Правки в этом облаке пропадут.'} Чтобы сохранить, нажмите «Готово».</p><div className="modal-actions"><button className="text-button" onClick={discardEditor}>Отменить изменения</button><button className="primary" autoFocus onClick={()=>setConfirmCancel(false)}>Продолжить редактирование</button></div></div></Modal>}
 
   {categoryModal&&<Modal label="Новая тема" onClose={()=>setCategoryModal(false)}><form className="small-modal" onSubmit={e=>{e.preventDefault();const c=newCategory.trim();if(c&&!categories.includes(c)){update(b=>({...b,categories:[...b.categories,c]}));setNewCategory('');setCategoryModal(false);nav(c)}}}><h2>Новая тема</h2><p>Чтобы близкие мысли были рядом.</p><input autoFocus placeholder="Например, Путешествия" aria-label="Название темы" value={newCategory} maxLength={60} onChange={e=>setNewCategory(e.target.value)}/><div className="modal-actions"><button type="button" className="text-button" onClick={()=>setCategoryModal(false)}>Отмена</button><button className="primary" disabled={!newCategory.trim()||categories.includes(newCategory.trim())}>Добавить</button></div></form></Modal>}
   {removeExamples&&<Modal label="Убрать примеры" onClose={()=>setRemoveExamples(false)}><div className="small-modal"><h2>Начать с чистого листа?</h2><p>Все облака с меткой «Пример» переместятся в корзину. Их можно будет вернуть.</p><div className="modal-actions"><button className="text-button" onClick={()=>setRemoveExamples(false)}>Оставить</button><button className="primary" onClick={()=>{update(b=>({...b,notes:b.notes.map(n=>n.example?{...n,deleted:true}:n)}));setRemoveExamples(false)}}>Убрать примеры</button></div></div></Modal>}

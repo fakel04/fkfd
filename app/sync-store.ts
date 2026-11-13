@@ -1,7 +1,7 @@
 import {type Session,canWrite} from './access-model.ts';
 import {AccessError} from './access-store.ts';
 import {readSharedBoard} from './board-store.ts';
-import {boardSchema,type Board} from './board-model.ts';
+import {boardSchema,boardBytes,MAX_BOARD_BYTES,BOARD_TOO_LARGE,type Board} from './board-model.ts';
 import {mergeBoards,assertBoardIntegrity,type SyncOperation} from './board-merge.ts';
 import {applyDifference,type CompactOperation} from './board-delta.ts';
 
@@ -13,10 +13,12 @@ async function replay(db:D1Database,session:Session,id:string,hash:string){
  return {...await readSharedBoard(db,session),conflicts:[]};
 }
 async function commit(db:D1Database,session:Session,id:string,hash:string,data:Board,previousRevision:number){
+ const value=JSON.stringify(data);
+ if(boardBytes(value)>MAX_BOARD_BYTES)throw new AccessError(BOARD_TOO_LARGE,413);
  const now=new Date().toISOString(),revision=previousRevision+1;
  const results=await db.batch([
   db.prepare('INSERT INTO board_operations (board_id,operation_id,actor_id,payload_hash,result_revision,created_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM boards WHERE user_id = ? AND revision = ?) ON CONFLICT(board_id,operation_id) DO NOTHING').bind(session.boardId,id,session.userId,hash,revision,now,session.boardId,previousRevision),
-  db.prepare('UPDATE boards SET data = ?, revision = ?, updated_at = ? WHERE user_id = ? AND revision = ? AND EXISTS (SELECT 1 FROM board_operations WHERE board_id = ? AND operation_id = ? AND actor_id = ? AND payload_hash = ? AND result_revision = ?)').bind(JSON.stringify(data),revision,now,session.boardId,previousRevision,session.boardId,id,session.userId,hash,revision),
+  db.prepare('UPDATE boards SET data = ?, revision = ?, updated_at = ? WHERE user_id = ? AND revision = ? AND EXISTS (SELECT 1 FROM board_operations WHERE board_id = ? AND operation_id = ? AND actor_id = ? AND payload_hash = ? AND result_revision = ?)').bind(value,revision,now,session.boardId,previousRevision,session.boardId,id,session.userId,hash,revision),
  ]);
  return results[1].meta.changes?{data,revision,conflicts:[]}:null;
 }

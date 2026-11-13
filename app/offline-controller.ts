@@ -1,5 +1,5 @@
 import {canWrite,type Session} from './access-model.ts';
-import {ensureFocusBoard,type Board} from './board-model.ts';
+import {ensureFocusBoard,boardBytes,MAX_BOARD_BYTES,type Board} from './board-model.ts';
 import {equal,mergeBoards,type SyncOperation,type MergeConflict,type Choices} from './board-merge.ts';
 import {accountKey,type OfflineRecord,type OfflineStorage,type Draft} from './offline-storage.ts';
 import {ConnectionError,SyncError} from './sync-errors.ts';
@@ -8,11 +8,11 @@ export {ConnectionError,SyncError} from './sync-errors.ts';
 export type Snapshot={data:Board;revision:number;session:Session;conflicts?:MergeConflict[];rebase?:boolean};
 export type TransportOptions={forceNetwork?:boolean;known?:Snapshot;wireRevision?:number};
 export type Transport={compact?:boolean;read:(options?:TransportOptions)=>Promise<Snapshot>;send:(operation:SyncOperation,session:Session,options?:TransportOptions)=>Promise<Snapshot>};
-export type OfflineState={board:Board;session:Session|null;ready:boolean;offline:boolean;syncing:boolean;status:string;error:string;conflicts:MergeConflict[];pending:number;drafts:Draft[];legacy?:Board;storageFailed:boolean;localSaving:number};
+export type OfflineState={board:Board;session:Session|null;ready:boolean;offline:boolean;syncing:boolean;status:string;error:string;conflicts:MergeConflict[];pending:number;drafts:Draft[];legacy?:Board;storageFailed:boolean;localSaving:number;tooLarge:boolean};
 const empty=():Board=>({notes:[],categories:[]});
 export function materialize(record:OfflineRecord){return record.queue.reduce((b,{operation:o})=>mergeBoards(o.base,o.data,b,{},true).data,record.base)}
 export class OfflineController{
- state:OfflineState={board:empty(),session:null,ready:false,offline:false,syncing:false,status:'Загрузка…',error:'',conflicts:[],pending:0,drafts:[],storageFailed:false,localSaving:0};
+ state:OfflineState={board:empty(),session:null,ready:false,offline:false,syncing:false,status:'Загрузка…',error:'',conflicts:[],pending:0,drafts:[],storageFailed:false,localSaving:0,tooLarge:false};
  private key='';private listeners=new Set<()=>void>();private busy=false;private syncWaiters:(()=>void)[]=[];private work:Promise<unknown>=Promise.resolve();private waiting:SyncOperation[]=[];private timer:ReturnType<typeof setTimeout>|undefined;private stopped=false;
  private restoring:Promise<void>|undefined;
  private locked=false;private generation=0;
@@ -65,7 +65,11 @@ export class OfflineController{
  enqueue(operation:SyncOperation){
   if(this.locked||!this.state.ready||!canWrite(this.state.session?.role??null)||this.state.conflicts.length||this.state.storageFailed)return false;
   if(equal(operation.base,operation.data))return true;
-  this.waiting.push(operation);this.emit({board:mergeBoards(operation.base,operation.data,this.state.board,{},true).data,status:'Сохраняем на устройстве…',pending:this.state.pending+1});
+  const board=mergeBoards(operation.base,operation.data,this.state.board,{},true).data;
+  // The server cannot store a board over the D1 row limit. Refuse it here, before it
+  // enters the durable queue, so it can never block later edits behind a 413.
+  if(boardBytes(board)>MAX_BOARD_BYTES&&boardBytes(board)>boardBytes(this.state.board)){this.emit({tooLarge:true});return false;}
+  this.waiting.push(operation);this.emit({board,tooLarge:false,status:'Сохраняем на устройстве…',pending:this.state.pending+1});
   const key=this.key;
   void this.persist(async()=>{const record=await this.store.mutate(key,r=>{
    if(!r?.allowed)throw new Error('Офлайн-доступ закрыт.');const tail=r.queue.at(-1);

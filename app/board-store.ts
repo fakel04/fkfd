@@ -1,5 +1,6 @@
 import {canWrite,type Session} from './access-model.ts';
 import {AccessError} from './access-store.ts';
+import {boardBytes,MAX_BOARD_BYTES,BOARD_TOO_LARGE} from './board-model.ts';
 export async function readBoardSince(db:D1Database,session:Session,knownRevision?:number){
  if(knownRevision!==undefined){
   const row=await db.prepare('SELECT revision FROM boards WHERE user_id = ?').bind(session.boardId).first<{revision:number}>();
@@ -13,6 +14,7 @@ export async function readSharedBoard(db:D1Database,session:Session){
 }
 export async function writeSharedBoard(db:D1Database,session:Session,value:string,revision:number){
  if(!canWrite(session.role))throw new AccessError('У вас доступ только для просмотра.');
+ if(boardBytes(value)>MAX_BOARD_BYTES)throw new AccessError(BOARD_TOO_LARGE,413);
  const now=new Date().toISOString();
  const result=revision===0
   ? await db.prepare('INSERT INTO boards (user_id, data, revision, updated_at) VALUES (?, ?, 1, ?) ON CONFLICT(user_id) DO NOTHING').bind(session.boardId,value,now).run()

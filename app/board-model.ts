@@ -9,6 +9,11 @@ export type Task = { id: string; text: string; done: boolean; labels?: string[];
 export type Note = { id: string; title: string; text: string; tasks: Task[]; labels?: string[]; color: string; category: string; pinned: boolean; archived: boolean; deleted: boolean; example?: boolean; created: string; kind?: 'focus'; todoist?:{ projectId:string; sectionId?:string; projectName:string; sectionName?:string } };
 export type Board = { notes: Note[]; categories: string[]; labels?: string[]; imports?:ImportReceipt[] };
 export const FOCUS_NOTE_ID = '__focus_tasks__';
+// The whole board is one D1 row, and D1 rejects rows over 2,000,000 bytes.
+// Keep headroom for the other columns and UTF-8 overhead of the row itself.
+export const MAX_BOARD_BYTES = 1_900_000;
+export const BOARD_TOO_LARGE = 'Доска слишком большая: в хранилище помещается до 1,9 МБ. Изменение не сохранено — скачайте копию доски и сократите её объём.';
+export const boardBytes = (board: unknown) => new TextEncoder().encode(typeof board === 'string' ? board : JSON.stringify(board)).length;
 export const isFocusNote = (note: Note) => note.id === FOCUS_NOTE_ID;
 
 export const labelKey = (label: string) => label.trim().normalize('NFKC').toLocaleLowerCase('ru-RU');

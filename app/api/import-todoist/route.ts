@@ -1,5 +1,5 @@
 import { env } from 'cloudflare:workers';
-import { boardSchema } from '../../board-model';
+import { boardSchema, boardBytes, MAX_BOARD_BYTES } from '../../board-model';
 import { mergeTodoist, todoistImportSchema } from '../../todoist-import';
 
 // Service imports are bound to one configured owner record and one explicit batch.
@@ -25,7 +25,7 @@ export async function POST(request:Request){
   if(!row)return response({error:'Owner board not found'},404);
   let merged;try{merged=mergeTodoist(boardSchema.parse(JSON.parse(row.data)),input,new Date().toISOString())}catch(e){return response({error:(e as Error).message},400)}
   if(merged.alreadyImported)return response({alreadyImported:true,receipt:merged.receipt,revision:row.revision});
-  const data=JSON.stringify(merged.board);if(data.length>3000000)return response({error:'Board too large'},413);
+  const data=JSON.stringify(merged.board);if(boardBytes(data)>MAX_BOARD_BYTES)return response({error:'Board too large'},413);
   const result=await env.DB!.prepare('UPDATE boards SET data = ?, revision = revision + 1, updated_at = ? WHERE user_id = ? AND revision = ?').bind(data,merged.receipt.at,env.TODOIST_IMPORT_USER_ID!,row.revision).run();
   if(result.meta.changes)return response({alreadyImported:false,receipt:merged.receipt,revision:row.revision+1});
  }
