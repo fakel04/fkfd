@@ -1,11 +1,12 @@
 'use client';
 import { useEffect, useRef, useState, type ReactNode, type PointerEvent } from 'react';
-import { MoreHorizontal, Pin, PinOff, Cloud, ListChecks } from 'lucide-react';
+import { MoreHorizontal, Pin, PinOff, Cloud, ListChecks, X } from 'lucide-react';
 import {clampSwipe,settleSwipe} from './swipe-offset';
 
-export function SwipeTask({children, label, pinned, focused, disabled, showMenuButton=true, onPin, onCloud, onFocus, onMore}: {
+export function SwipeTask({children, label, pinned, focused, disabled, showMenuButton=true, onPin, onCloud, onFocus, onMore, onDelete}: {
  children:ReactNode; label:string; pinned?:boolean; focused?:boolean; disabled?:boolean; showMenuButton?:boolean;
  onPin:()=>void; onCloud:()=>void; onFocus:()=>void; onMore:()=>void;
+ onDelete?:()=>void;
 }) {
  const root=useRef<HTMLDivElement>(null);
  const [offset,setOffset]=useState(0); const [moving,setMoving]=useState(false);
@@ -53,10 +54,11 @@ export function SwipeTask({children, label, pinned, focused, disabled, showMenuB
     <button type="button" aria-label={'Ещё: '+label} onClick={()=>action(onMore)}><MoreHorizontal/><span>Ещё</span></button>
    </div>
   </>}
-  <div className={'swipe-content'+(!showMenuButton?' no-task-menu':'')+(moving?' swiping':'')} style={{transform:`translateX(${offset}px)`}}
+  <div className={'swipe-content'+(!showMenuButton?' no-task-menu':'')+(!disabled&&onDelete?' has-task-delete':'')+(moving?' swiping':'')} style={{transform:`translateX(${offset}px)`}}
    onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerCancel={close}
    onClickCapture={e=>{if(suppress.current){e.preventDefault();e.stopPropagation();suppress.current=false;}else if(offset){e.preventDefault();e.stopPropagation();close();}}}>
    {children}
+   {!disabled&&onDelete&&<button type="button" className="task-delete-trigger" title="Удалить дело" aria-label={'Удалить дело: '+(label||'Без названия')} onClick={e=>{e.stopPropagation();action(onDelete)}}><X size={16}/></button>}
    {!disabled&&showMenuButton&&<button type="button" className="task-menu-trigger" aria-label={'Действия: '+label} onClick={e=>{e.stopPropagation();action(onMore)}}><MoreHorizontal size={16}/></button>}
   </div>
  </div>;
