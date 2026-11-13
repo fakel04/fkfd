@@ -27,12 +27,12 @@ export async function requestSnapshot(path:string,init:RequestInit={},options:Tr
  try{
   const response=await fetch(path,{...init,cache:'no-store',redirect:'manual',signal:abort.signal});
   if(response.type==='opaqueredirect'||response.status===401||response.status===403)
-   throw new SyncError('Войдите через ChatGPT. Локальные правки сохранены для вашего аккаунта.',401);
+   throw new SyncError('Войдите снова. Локальные правки сохранены для вашего аккаунта.',401);
   // A server outage may return HTML. It is not an authentication failure.
   if(response.status>=500)throw new SyncError(`Сервер временно недоступен (ошибка ${response.status}). Повторите попытку позже.`,response.status);
   if(!response.headers.get('content-type')?.includes('application/json')){
    if(!response.ok)throw new SyncError(`Сервер отклонил запрос (ошибка ${response.status}).`,response.status);
-   throw new SyncError('Для доступа к доске нужно снова войти через ChatGPT.',401);
+   throw new SyncError('Для доступа к доске нужно войти снова.',401);
   }
   let body:Snapshot&{error?:string;unchanged?:boolean;acknowledged?:boolean;operationId?:string};
   try{body=await response.json()}catch(error){if(timedOut)throw error;throw new SyncError('Сервер вернул некорректный ответ. Повторите попытку.',502)}

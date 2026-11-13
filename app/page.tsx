@@ -1,5 +1,6 @@
 'use client';
 import {canWrite,canAdmin,roleNames} from './access-model';
+import {signInHref,signOutHref} from './auth-links';
 import {useOfflineBoard} from './use-offline-board';
 import {syncNotice} from './sync-status';
 import {useSafeAppUpdate} from './use-safe-app-update';
@@ -293,7 +294,7 @@ export default function Home(){
    {palette===n.id&&<div className="palette">{colors.map((c,i)=><button key={c} aria-label={colorNames[i]} title={colorNames[i]} className={'swatch color-'+c+(n.color===c?' selected':'')} onClick={()=>{patch(n.id,{color:c});setPalette(null)}}>{n.color===c&&<Check size={14}/>}</button>)}</div>}
   </article>;
  }
- if(!ready&&!demo)return <div className="access-screen"><Cloud size={48}/><h1>{error?status:'Открываем облака'}</h1><p>{error||'Загружаем общую доску.'}</p>{error&&<><button className="secondary" onClick={()=>load()}>Обновить</button><a className="secondary" href="/signin-with-chatgpt?return_to=/" target="_top">Войти через ChatGPT</a></>}</div>;
+ if(!ready&&!demo)return <div className="access-screen"><Cloud size={48}/><h1>{error?status:'Открываем облака'}</h1><p>{error||'Загружаем общую доску.'}</p>{error&&<><button className="secondary" onClick={()=>load()}>Обновить</button><a className="secondary" href={signInHref("/")} target="_top">Войти</a></>}</div>;
  return <div className={'app-shell keep-layout'+(organizing?' organizing':'')+(!canEdit?' readonly-board':'')}>
   {sidebar&&<div className="sidebar-scrim" onClick={()=>setSidebar(false)}/>}
   <aside className={'sidebar '+(sidebar?'open':'')}>
@@ -311,7 +312,7 @@ export default function Home(){
     <button className="help-link" onClick={()=>setHelp(true)}><CircleHelp size={18}/>Как это работает</button>
     {!!board.imports?.length&&<p className="sidebar-import">Из Todoist: {board.imports.reduce((sum,item)=>sum+item.taskCount,0)} задач</p>}
     <div className="profile"><span className="avatar">А</span><div><strong>{session?.name||'Общее пространство'}</strong><small>{session?roleNames[session.role]:''}</small></div></div>
-    {!demo&&<a href="/signout-with-chatgpt?return_to=/" target="_top" className="help-link" onClick={async e=>{e.preventDefault();await controller.lock();location.assign("/signout-with-chatgpt?return_to=/")}}><LogOut size={18}/>Выйти из аккаунта</a>}
+    {!demo&&<a href={signOutHref} target="_top" className="help-link" onClick={async e=>{e.preventDefault();await controller.lock();location.assign(signOutHref)}}><LogOut size={18}/>Выйти из аккаунта</a>}
    </div>
   </aside>
   <div className="main-shell">

@@ -4,7 +4,7 @@ export type WorkspaceRow={id:string;owner_user_id:string;owner_email:string;owne
 export type MemberRow={email:string;user_id:string|null;name:string;role:MemberRole;active:number;revision:number;created_at:string;updated_at:string;last_seen_at:string|null};
 export class AccessError extends Error{status:number;constructor(message:string,status=403){super(message);this.status=status}}
 
-/** The owner is bound only by a server-configured, verified ChatGPT email, never by the first visitor. */
+/** The owner is bound only by a server-configured, verified sign-in email, never by the first visitor. */
 export async function resolveSession(db:D1Database,ownerEmail:string|undefined,user:Identity,loginAliases:ReadonlyMap<string,string>=new Map()):Promise<Session>{
  let workspace=await db.prepare('SELECT * FROM workspace WHERE id = ?').bind('main').first<WorkspaceRow>();
  if(!workspace){
@@ -24,9 +24,9 @@ export async function resolveSession(db:D1Database,ownerEmail:string|undefined,u
   if(!member&&alias&&alias!==workspace.owner_email&&alias!==normalizeEmail(ownerEmail||'')){
    member=await db.prepare('SELECT * FROM members WHERE email = ?').bind(alias).first<MemberRow>();
   }
-  if(member?.user_id&&member.user_id!==user.userId)throw new AccessError('Этот доступ уже привязан к другому аккаунту ChatGPT.');
+  if(member?.user_id&&member.user_id!==user.userId)throw new AccessError('Этот доступ уже привязан к другому аккаунту.');
  }
- if(!member||!member.active)throw new AccessError('Доступ к доске не выдан. Попросите администратора добавить email вашего ChatGPT.');
+ if(!member||!member.active)throw new AccessError('Доступ к доске не выдан. Попросите администратора добавить ваш email.');
  if(!['viewer','editor','admin'].includes(member.role))throw new AccessError('Нет доступа.');
  if(!member.user_id){
   await db.prepare('UPDATE members SET user_id = ?, name = ?, last_seen_at = ? WHERE email = ? AND user_id IS NULL AND active = 1').bind(user.userId,user.displayName,new Date().toISOString(),member.email).run();

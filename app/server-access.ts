@@ -1,10 +1,10 @@
 import {env} from 'cloudflare:workers';
-import {getChatGPTUser} from './chatgpt-auth';
+import {getUser} from './auth';
 import {AccessError,resolveSession} from './access-store';
 import {parseLoginAliases} from './login-aliases';
 export async function requireSession(){
- const user=await getChatGPTUser();
- if(!user)throw new AccessError('Войдите через ChatGPT.',401);
+ const user=await getUser();
+ if(!user)throw new AccessError('Войдите, чтобы открыть доску.',401);
  if(!env.DB)throw new AccessError('Хранилище недоступно.',503);
  return resolveSession(env.DB,env.OBLAKA_OWNER_EMAIL,user,parseLoginAliases(env.OBLAKA_LOGIN_EMAIL_ALIASES));
 }

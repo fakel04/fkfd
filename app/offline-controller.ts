@@ -55,7 +55,7 @@ export class OfflineController{
  }
  stop(){this.stopped=true;this.generation++;if(this.timer)clearTimeout(this.timer)}
  private schedule(delay=700){if(this.timer)clearTimeout(this.timer);if(!this.stopped&&!this.locked)this.timer=setTimeout(()=>void this.sync(),Math.max(delay,this.nextAttemptAt-Date.now()))}
- async lock(message='Войдите через ChatGPT, чтобы открыть доску.'){
+ async lock(message='Войдите, чтобы открыть доску.'){
   this.locked=true;this.generation++;if(this.timer)clearTimeout(this.timer);
   const key=this.key;await this.work;
   try{if(key)await this.store.mutate(key,r=>({...r!,allowed:false}));else {const active=await this.store.active();if(active)await this.store.mutate(active.key,r=>({...r!,allowed:false}))}await this.store.activate(null)}finally{
