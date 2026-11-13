@@ -75,3 +75,9 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
  .modal-panel:has(.above-keyboard){scroll-padding-bottom:56px}
  .editor:has(.above-keyboard) input,.editor:has(.above-keyboard) textarea{scroll-margin-bottom:56px}
 }
+
+/* Board cards are tap targets, not text: a tap opens the cloud, and a long press
+   on iPhone must not start text selection (Copy / Find / Translate). Editing and
+   selection stay available inside the opened cloud editor. */
+.keep-layout .note .note-title,.keep-layout .note .note-text,.keep-layout .note .task-row{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.keep-layout .note .note-text,.keep-layout .note .task-label{cursor:pointer}
