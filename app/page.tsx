@@ -359,7 +359,7 @@ export default function Home(){
     else if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(event.key))editorHistory.breakGroup();
    }}>
     <div className="editor-top"><button className="icon-button" aria-label="Назад к облакам" onClick={saveEditor}><ArrowLeft size={23}/></button><span>{isFocusNote(editor)?'ВРЕМЕННЫЙ СПИСОК ДЕЛ':isNew?'НОВОЕ ОБЛАКО':'ВАШЕ ОБЛАКО'}</span>
-     <button className={'icon-button '+(editor.pinned?'is-pinned':'')} aria-label="Закрепить облако" disabled={!canEdit||isFocusNote(editor)} onClick={()=>setEditor({...editor,pinned:!editor.pinned})}><Pin size={20}/></button>
+     <button className="icon-button editor-pin" aria-label={editor.pinned?'Открепить облако':'Закрепить облако'} title={editor.pinned?'Открепить облако':'Закрепить облако'} aria-pressed={editor.pinned} disabled={!canEdit||isFocusNote(editor)} onClick={()=>setEditor({...editor,pinned:!editor.pinned})}><Pin size={20} fill={editor.pinned?'currentColor':'none'}/></button>
      <button className="icon-button" aria-label="Сохранить и закрыть" onClick={saveEditor}><X size={22}/></button>
     </div>
     <input readOnly={!canEdit||isFocusNote(editor)} className="editor-title" aria-label="Заголовок облака" placeholder="Название облака" value={editor.title} maxLength={300} onChange={e=>setEditor({...editor,title:e.target.value},'title')}/>
