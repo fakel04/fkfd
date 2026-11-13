@@ -152,7 +152,8 @@ export function EditorTaskList({ tasks, onChange, onToggleFocus, onMoveToCloud, 
     const index = tasks.findIndex(item => item.id === task.id);
     return <SwipeTask key={task.id} label={task.text} pinned={task.pinned} focused={focusMode} disabled={readOnly}
       onPin={()=>onChange(tasks.map(item=>item.id===task.id?{...item,pinned:!item.pinned}:item))}
-      onCloud={()=>onMoveToCloud(task.id)} onMore={()=>onMore(task.id)} onFocus={()=>onToggleFocus?.(task.id)}>
+      onCloud={()=>onMoveToCloud(task.id)} onMore={()=>onMore(task.id)} onFocus={()=>onToggleFocus?.(task.id)}
+      onDelete={()=>{if(current.current.readOnly)return;current.current.onChange(current.current.tasks.filter(item=>item.id!==task.id));setAnnouncement('Дело удалено');}}>
       <div data-editor-task-id={task.id}
         className={'editor-task' + (task.done ? ' done' : '')}>
         {!readOnly&&!task.done&&<button type="button" className="editor-task-grip drag-handle" aria-label={'Переместить задачу ' + (task.text || String(index + 1))}
