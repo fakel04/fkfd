@@ -42,6 +42,10 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
 .editor-task-list .swipe-task{margin:0}
 .editor-task-list .swipe-content,.editor-task-list .swipe-content>.editor-task{min-height:36px;margin:0}
 .editor-task-list .task-menu-trigger{top:0;height:36px}
+@media(max-width:760px){
+ .task-menu-trigger{display:none}
+ .swipe-content{padding-right:0}
+}
 .editor-task-list .swipe-open .swipe-content{min-height:56px}
 .editor-task-list .swipe-actions button{padding:6px 3px;font-size:11px;gap:4px}
 .editor-task-list .swipe-actions svg{width:18px;height:18px}
