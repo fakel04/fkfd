@@ -1,0 +1,16 @@
+{
+  "id": "/",
+  "name": "Облака — задачи и заметки",
+  "short_name": "Облака",
+  "description": "Задачи и заметки в облаках",
+  "lang": "ru",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    { "src": "/icons/oblaka-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/oblaka-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

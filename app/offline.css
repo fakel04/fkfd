@@ -1,0 +1,6 @@
+.offline-status{font-size:13px;color:#536d7a;display:flex;align-items:center;gap:8px;padding:8px 16px;background:#f1f5f8;border-radius:10px;margin:8px 0 12px}
+.offline-status button{margin-left:auto;text-decoration:underline;background:none;border:0;color:inherit;cursor:pointer}
+.offline-status>span{flex:1;min-width:0}.offline-status button{flex-shrink:0;padding:6px 0}.offline-status button:disabled{cursor:default;text-decoration:none;opacity:.5}
+.sync-spinner{animation:sync-spin 1s linear infinite;flex-shrink:0}@keyframes sync-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.sync-spinner{animation:none}}
+.editor-save-status{font-size:12px;color:#626b68;margin:10px 0;display:block}
+.sync-conflicts{padding:24px;max-width:620px}.sync-conflicts h2{font-size:22px;margin-bottom:12px}.sync-conflicts p{font-size:14px;line-height:1.5}.sync-conflicts fieldset{border:1px solid #d7dcde;border-radius:12px;padding:12px;margin:18px 0}.sync-conflicts legend{font-size:14px;font-weight:600;padding:0 6px}.sync-conflicts label{display:block;background:#f4f6f8;border-radius:8px;padding:12px;margin-top:8px;cursor:pointer}.sync-conflicts input{margin-right:8px}.sync-conflicts pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto;font:13px/1.5 inherit;margin:8px 0}.sync-conflicts details{font-size:13px}
