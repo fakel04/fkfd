@@ -28,8 +28,8 @@
 /* Long-press selection and the source cloud stay visible independently of completion. */
 .task-checkbox{position:relative;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overflow:visible}
 .task-checkbox::before{content:'';position:absolute;inset:-6px;border-radius:7px}
-.task-checkbox.focused-checkbox{border:3px solid #4f6841}
-.task-checkbox.focused-checkbox[aria-checked=true]{background:#4f6841;border-color:#4f6841}
+
+
 .task-checkbox.checkbox-holding::after{content:'';position:absolute;inset:-5px;border:2px solid #698952;border-radius:7px;pointer-events:none;animation:checkbox-hold .55s linear both}
 @keyframes checkbox-hold{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
 .task-copy{display:flex;flex-direction:column;min-width:0;flex:1;gap:4px}.task-copy .task-label{display:block}
