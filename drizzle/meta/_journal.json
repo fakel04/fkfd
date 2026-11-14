@@ -29,6 +29,13 @@
       "when": 1794640000000,
       "tag": "0003_cloud_access",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1794641937049,
+      "tag": "0004_task_materials",
+      "breakpoints": true
     }
   ]
 }

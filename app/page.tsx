@@ -19,6 +19,7 @@ import { EditorTaskList } from './editor-task-list';
 import { TagPicker } from './tag-picker';
 import { DuePicker } from './due-picker';
 import { TaskDescriptionEditor } from './task-description-editor';
+import { TaskMaterials } from './task-materials';
 import { TaskAiLinksEditor } from './task-ai-links-editor';
 import { TaskParentPicker } from './task-parent-picker';
 import { createParentResolver, canChooseParent } from './task-relations';
@@ -29,7 +30,7 @@ import { localDate } from './task-due';
 import { expandTaskLines, prepareTaskList } from './task-list-edit';
 import { boardLabels, preserveLabelCatalog, hasLabel, noteHasLabel, taskLabels, taskDueDate, taskDescription, FOCUS_NOTE_ID, pinnedFirst, moveTaskToCloud, ensureFocusBoard, isFocusNote, moveToFocus, returnFromFocus, sourceTitle, type Board, type Note, type Task, type TaskParent } from './board-model';
 import { useState, useEffect, useRef, useMemo, type FormEvent } from 'react';
-import { AlignLeft, CornerDownRight, CalendarDays, ArrowDownUp, Rows2, ArrowLeft, Cloud, Search, Plus, LayoutGrid, List, Pin, Archive, Trash2, X, Check, GripVertical, ArrowUp, ArrowDown, Palette, Menu, Tag, CheckCheck, Download, RotateCcw, StickyNote, CircleHelp, CloudCheck, ArrowUpRight } from 'lucide-react';
+import { AlignLeft, CornerDownRight, CalendarDays, Paperclip, ArrowDownUp, Rows2, ArrowLeft, Cloud, Search, Plus, LayoutGrid, List, Pin, Archive, Trash2, X, Check, GripVertical, ArrowUp, ArrowDown, Palette, Menu, Tag, CheckCheck, Download, RotateCcw, StickyNote, CircleHelp, CloudCheck, ArrowUpRight } from 'lucide-react';
 
 type TaskTarget={noteId:string;taskId:string;fromEditor:boolean};
 type Drag={kind:'note'|'task';noteId:string;taskId?:string;x:number;y:number;active:boolean;label:string;pointerId:number;lift?:TaskLift;card?:HTMLElement;color?:string};
@@ -86,9 +87,10 @@ export default function Home(){
  const [tagPicker,setTagPicker]=useState<TaskTarget|null>(null);
  const [duePicker,setDuePicker]=useState<TaskTarget|null>(null);
  const [descriptionEditor,setDescriptionEditor]=useState<TaskTarget|null>(null);
+ const [materialsTarget,setMaterialsTarget]=useState<TaskTarget|null>(null);
  const [parentPicker,setParentPicker]=useState<TaskTarget|null>(null);
  const [help,setHelp]=useState(false); const [removeExamples,setRemoveExamples]=useState(false);
- useSafeAppUpdate(offline.updateVersion,()=>ready&&!editor&&!quick&&!newCategory&&!drag.current&&!organizing&&!sidebar&&!toast&&!palette&&!offline.drafts.length&&!offline.localSaving&&!offline.storageFailed&&!conflict);
+ useSafeAppUpdate(offline.updateVersion,()=>ready&&!editor&&!quick&&!newCategory&&!drag.current&&!organizing&&!sidebar&&!toast&&!palette&&!offline.drafts.length&&!offline.localSaving&&!offline.storageFailed&&!conflict&&!materialsTarget&&!descriptionEditor&&!taskAction);
  const notify=(s:string)=>{setToast(s);};
  useEffect(()=>{if(toast){const t=setTimeout(()=>setToast(''),3500);return()=>clearTimeout(t)}},[toast]);
  function update(next:Board|((b:Board)=>Board)){
@@ -272,7 +274,7 @@ export default function Home(){
  const editorParentOf=useMemo(()=>createParentResolver(displayBoard),[displayBoard]);
  const availableTags=boardLabels(displayBoard);
  function targetTask(target:TaskTarget|null){return target?(target.fromEditor?editor:board.notes.find(n=>n.id===target.noteId))?.tasks.find(t=>t.id===target.taskId):undefined}
- const pickerTask=targetTask(tagPicker),dueTask=targetTask(duePicker),descriptionTask=targetTask(descriptionEditor),parentTask=targetTask(parentPicker);
+ const pickerTask=targetTask(tagPicker),dueTask=targetTask(duePicker),descriptionTask=targetTask(descriptionEditor),parentTask=targetTask(parentPicker),materialsTask=targetTask(materialsTarget);
  function applyTaskMetadata(target:TaskTarget,changes:Partial<Task>){
   if(!canEdit)return;
   const {noteId,taskId,fromEditor}=target;
@@ -434,6 +436,7 @@ export default function Home(){
     <button onClick={()=>{setTagPicker({noteId:taskAction.noteId,taskId:taskAction.taskId,fromEditor:taskAction.fromEditor});setTaskAction(null)}}><Tag size={18}/>Теги</button>
     <button onClick={()=>{setDuePicker({noteId:taskAction.noteId,taskId:taskAction.taskId,fromEditor:taskAction.fromEditor});setTaskAction(null)}}><CalendarDays size={18}/>Срок</button>
     <button onClick={()=>{setDescriptionEditor({noteId:taskAction.noteId,taskId:taskAction.taskId,fromEditor:taskAction.fromEditor});setTaskAction(null)}}><AlignLeft size={18}/>Описание</button>
+    <button onClick={()=>{setMaterialsTarget({noteId:taskAction.noteId,taskId:taskAction.taskId,fromEditor:taskAction.fromEditor});setTaskAction(null)}}><Paperclip size={18}/>Комментарии и материалы</button>
     <button onClick={()=>{setParentPicker({noteId:taskAction.noteId,taskId:taskAction.taskId,fromEditor:taskAction.fromEditor});setTaskAction(null)}}><CornerDownRight size={18}/>Головная задача</button>
     <button onClick={()=>changeActionTask({pinned:!actionTask.pinned})}><Pin size={18}/>{actionTask.pinned?'Открепить':'Закрепить'}</button>
     {taskAction.noteId!==FOCUS_NOTE_ID&&<button onClick={()=>moveActionTask(FOCUS_NOTE_ID)}><CheckCheck size={18}/>В задачи</button>}
@@ -448,7 +451,8 @@ export default function Home(){
   </div></Modal>}
   {tagPicker&&pickerTask&&canEdit&&<Modal label="Теги задачи" onClose={()=>setTagPicker(null)}><TagPicker title="Теги задачи" options={availableTags} value={taskLabels(pickerTask)} onApply={labels=>{applyTaskMetadata(tagPicker,{labels});setTagPicker(null)}} onCancel={()=>setTagPicker(null)}/></Modal>}
   {duePicker&&dueTask&&canEdit&&<Modal label="Срок задачи" onClose={()=>setDuePicker(null)}><DuePicker value={taskDueDate(dueTask)} onApply={dueDate=>{applyTaskMetadata(duePicker,{dueDate});setDuePicker(null)}} onCancel={()=>setDuePicker(null)}/></Modal>}
-  {descriptionEditor&&descriptionTask&&canEdit&&<Modal label="Описание задачи" onClose={()=>setDescriptionEditor(null)}><TaskDescriptionEditor value={taskDescription(descriptionTask)} onApply={description=>{applyTaskMetadata(descriptionEditor,{description});setDescriptionEditor(null)}} onCancel={()=>setDescriptionEditor(null)}/></Modal>}
+  {descriptionEditor&&descriptionTask&&canEdit&&<Modal label="Описание задачи" onClose={()=>setDescriptionEditor(null)}><TaskDescriptionEditor materials={<TaskMaterials key={descriptionTask.id} task={descriptionTask}/>} value={taskDescription(descriptionTask)} onApply={description=>{applyTaskMetadata(descriptionEditor,{description});setDescriptionEditor(null)}} onCancel={()=>setDescriptionEditor(null)}/></Modal>}
+  {materialsTarget&&materialsTask&&canEdit&&<Modal label="Комментарии и материалы" onClose={()=>setMaterialsTarget(null)}><div className="small-modal"><TaskMaterials key={materialsTask.id} task={materialsTask}/><div className="modal-actions"><button type="button" className="secondary" onClick={()=>setMaterialsTarget(null)}>Закрыть</button></div></div></Modal>}
   {parentPicker&&parentTask&&canEdit&&<Modal label="Головная задача" onClose={()=>setParentPicker(null)}><TaskParentPicker board={parentPicker.fromEditor?displayBoard:board} task={parentTask} onApply={applyParent} onCancel={()=>setParentPicker(null)}/></Modal>}
   {conflict&&<Modal focusPanel label="Конфликт изменений" onClose={()=>{}}><SyncConflicts conflicts={offline.conflicts} onResolve={choices=>controller.resolve(choices)} onExport={exportBoard}/></Modal>}
   {help&&<Modal label="Как это работает" onClose={()=>setHelp(false)}><div className="small-modal help-modal"><div className="help-cloud"><Cloud size={37}/></div><h2>Порядок без правил</h2><p>Облако — это заметка, список дел или всё сразу.</p><div className="help-row"><Plus/><div><strong>Запишите, пока не забыли</strong><p>Откройте меню ☰ → «Новое облако» (на компьютере — строка вверху доски). Облако может быть заметкой, списком дел или всем сразу.</p></div></div><div className="help-row"><GripVertical/><div><strong>Расставьте по-своему</strong><p>Нажмите ↕ вверху, затем тяните за точки, чтобы двигать карточки и задачи, в том числе внутри открытого облака. Задачу можно перенести в другое облако. С клавиатуры: фокус на точках, затем ↑ или ↓.</p></div></div><div className="help-row"><CheckCheck/><div><strong>Соберите задачи на сейчас</strong><p>Откройте облако и смахните дело влево → «Ещё», чтобы выбрать теги, установить срок, изменить описание или головную задачу. Эти поля относятся только к выбранной задаче. Смахните вправо: «Закрепить» и «В задачи» в обычном облаке, «Закрепить» и «В облако» в списке «Задачи». В «Задачах» исходное облако показано значком облака. Это отдельное поле «Облако». Теги Todoist («идея», «жду» и другие) остаются самостоятельными метками со значком бирки. Галочка отмечает выполнение. Без свайпа все действия доступны через кнопку «…» у дела.</p></div></div><div className="help-row"><Palette/><div><strong>Добавьте свой порядок</strong><p>Цвета, темы и закрепление помогают держать важное на виду. Нажмите на заголовок, чтобы изменить облако.</p></div></div><div className="help-row"><CloudCheck/><div><strong>Всё сохраняется</strong><p>{demo?'Это предпросмотр. На опубликованном сайте доска сохраняется в аккаунте.':'После первого открытия с интернетом доска доступна офлайн. Правки и черновики сохраняются на этом устройстве. Синхронизация возобновляется, когда сайт открыт и связь восстановлена. Если одно поле изменено на двух устройствах, выберите нужную версию. На общем устройстве выход из аккаунта закрывает офлайн-доступ.'}</p></div></div><button className="primary" onClick={()=>setHelp(false)}>Понятно</button></div></Modal>}
