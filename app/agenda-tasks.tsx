@@ -138,7 +138,7 @@ export function AgendaTasks(props:Props){
        // iPhone keeps the keyboard open only for focus changes made synchronously.
        const input=[...root.current?.querySelectorAll<HTMLElement>('[data-agenda-task-id]')??[]].find(row=>row.dataset.agendaTaskId===id)?.querySelector<HTMLTextAreaElement>('textarea');
        input?.focus({preventScroll:true});input?.setSelectionRange(0,0);input?.scrollIntoView({block:'nearest'});
-      })}/>{(time||source)&&<span className="agenda-source">{time&&<b>{time}{source?' · ':''}</b>}{source}</span>}</div>:<span className="agenda-task"><span className="task-label"><TaskText text={task.text||'Без названия'}/></span><small>{time&&<b>{time} · </b>}{source}</small></span>}
+      })}/>{(time||source)&&<span className="agenda-source">{time&&<b>{time}{source?' · ':''}</b>}{source}</span>}</div>:<span className="agenda-task"><span className="task-label"><TaskText text={task.text}/></span>{(time||source)&&<small>{time&&<b>{time}{source?' · ':''}</b>}{source}</small>}</span>}
     </div>;
      return props.full?<SwipeTask key={task.id} label={task.text||'Без названия'} pinned={task.pinned} focused={isFocusNote(note)} disabled={props.readOnly} showMenuButton={false}
       onPin={()=>props.onPin?.(note,task)} onFocus={()=>props.onFocus?.(note,task)} onCloud={()=>props.onCloud?.(note,task)} onMore={()=>props.onMore?.(note,task)}>{row}</SwipeTask>:row;
