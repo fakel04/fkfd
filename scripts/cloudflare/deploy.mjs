@@ -29,8 +29,12 @@ const config=JSON.parse(readFileSync(CONFIG,'utf8'));
 config.name=WORKER;config.topLevelName=WORKER;config.workers_dev=true;
 config.d1_databases=[{binding:'DB',database_name:DB_NAME,database_id:databaseId}];
 // File access is served only by authenticated task routes, never by a public bucket URL.
-const bucketName=await ensureMaterialsBucket({accountId:process.env.CLOUDFLARE_ACCOUNT_ID,token:process.env.CLOUDFLARE_API_TOKEN,name:WORKER+'-materials'});
-config.r2_buckets=[...(config.r2_buckets??[]).filter(bucket=>bucket.binding!=='BUCKET'),{binding:'BUCKET',bucket_name:bucketName}];
+// Without R2 the site is still published: file uploads stay off (the app shows a hint),
+// while links, comments and summaries work. Enable R2 later and redeploy to turn them on.
+let bucketName=null;
+try{bucketName=await ensureMaterialsBucket({accountId:process.env.CLOUDFLARE_ACCOUNT_ID,token:process.env.CLOUDFLARE_API_TOKEN,name:WORKER+'-materials'})}
+catch(error){console.warn('\n⚠ '+(error instanceof Error?error.message:String(error))+'\n  Сайт публикуется без загрузки файлов.\n')}
+config.r2_buckets=[...(config.r2_buckets??[]).filter(bucket=>bucket.binding!=='BUCKET'),...(bucketName?[{binding:'BUCKET',bucket_name:bucketName}]:[])];
 const vars={};
 for(const name of ['OBLAKA_OWNER_EMAIL','ACCESS_TEAM_DOMAIN','ACCESS_AUD','OBLAKA_LOGIN_EMAIL_ALIASES']){const value=process.env[name]?.trim();if(value)vars[name]=value}
 config.vars=vars;
