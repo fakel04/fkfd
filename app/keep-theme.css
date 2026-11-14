@@ -85,9 +85,6 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
 .keep-layout .note .note-text,.keep-layout .note .task-label{cursor:pointer}
 .keep-layout .note:not(.deleted){cursor:pointer}
 
-/* Phone: only the floating "+" (create a cloud) — no bottom bar. */
-.mobile-add-fab{display:none}
-@media(max-width:760px){
- .mobile-add-fab{display:flex;align-items:center;justify-content:center;position:fixed;right:22px;bottom:calc(22px + env(safe-area-inset-bottom));z-index:50;width:60px;height:60px;border-radius:50%;background:#fff;color:#536c84;box-shadow:0 4px 10px #3c40432b}
- .mobile-add-fab svg{stroke-width:2.7}
-}
+/* Phone: creating a cloud lives in the ☰ menu; desktop uses the composer above the board. */
+.mobile-create-nav{display:none}
+@media(max-width:760px){.mobile-create-nav{display:block}}
