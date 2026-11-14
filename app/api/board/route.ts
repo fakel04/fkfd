@@ -18,7 +18,7 @@ export async function GET(request:Request) {
 export async function PUT(request:Request) {
  try{
   const session=await requireSession();checkOrigin(request);
-  if(!canWrite(session.role))throw new AccessError('У вас доступ только для просмотра.');
+  if(!canWrite(session.role))throw new AccessError('Изменять доску нельзя.');
   if(Number(request.headers.get('content-length')||0)>3000000)throw new AccessError('Слишком большой запрос.',413);
   const raw=await request.text();if(raw.length>3000000)throw new AccessError('Слишком большой запрос.',413);
   let body;try{body=z.object({revision:z.number().int().min(0),data:boardSchema}).parse(JSON.parse(raw))}catch{throw new AccessError('Некорректная доска.',400)}

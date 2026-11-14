@@ -34,3 +34,10 @@ export const members = sqliteTable('members', {
   updatedAt: text('updated_at').notNull(),
   lastSeenAt: text('last_seen_at'),
 });
+
+/** Clouds a member may see and edit. Admins and the owner see every cloud without rows here. */
+export const cloudAccess = sqliteTable('cloud_access', {
+  memberEmail: text('member_email').notNull(),
+  noteId: text('note_id').notNull(),
+  createdAt: text('created_at').notNull(),
+}, table=>[primaryKey({columns:[table.memberEmail,table.noteId]})]);

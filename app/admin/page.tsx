@@ -1,18 +1,19 @@
 'use client';
 import {useEffect,useRef,useState,type FormEvent,type ChangeEvent} from 'react';
-import {ArrowLeft,ShieldCheck,UserPlus,Copy,LockKeyhole,RefreshCw,Upload} from 'lucide-react';
+import {ArrowLeft,ShieldCheck,UserPlus,Copy,LockKeyhole,RefreshCw,Upload,Cloud,Search} from 'lucide-react';
 import {canManage,roleNames,type MemberRole,type Session} from '../access-model';
 import {signInHref} from '../auth-links';
-type Member={email:string;name:string;role:MemberRole;active:boolean;revision:number;joined:boolean;self:boolean};
-type Data={session:Session;owner:{name:string;email:string};members:Member[]};
+type Member={email:string;name:string;role:MemberRole;active:boolean;revision:number;joined:boolean;self:boolean;clouds:string[]};
+type CloudInfo={id:string;title:string;archived:boolean;color:string};
+type Data={session:Session;owner:{name:string;email:string};members:Member[];clouds:CloudInfo[]};
 export default function Admin(){
- const [data,setData]=useState<Data|null>(null),[error,setError]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[email,setEmail]=useState(''),[role,setRole]=useState<MemberRole>('viewer');
+ const [data,setData]=useState<Data|null>(null),[error,setError]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[email,setEmail]=useState(''),[role,setRole]=useState<MemberRole>('member');
  const [demo,setDemo]=useState(false);
  async function load(){
   try{
    const r=await fetch('/api/members',{cache:'no-store'});const body=await r.json() as Data&{error?:string};
    if(r.status===401&&process.env.NODE_ENV==='development'){
-    setDemo(true);setData({session:{role:'superadmin',userId:'preview-owner',email:'owner@example.com',name:'Владелец',boardId:'preview-owner'},owner:{name:'Владелец',email:'owner@example.com'},members:[]});return;
+    setDemo(true);setData({session:{role:'superadmin',userId:'preview-owner',email:'owner@example.com',name:'Владелец',boardId:'preview-owner'},owner:{name:'Владелец',email:'owner@example.com'},members:[],clouds:[]});return;
    }
    if(!r.ok){if(r.status===401||r.status===403)setData(null);throw new Error(body.error||'Не удалось загрузить пользователей.');}
    setData(body);setError('');
@@ -22,9 +23,9 @@ export default function Admin(){
  async function add(e:FormEvent){
   e.preventDefault();setBusy(true);setError('');setMessage('');
   try{
-   if(demo){setData(current=>current?{...current,members:[...current.members,{email:email.trim().toLowerCase(),name:'',role,active:true,revision:1,joined:false,self:false}]}:current)}
+   if(demo){setData(current=>current?{...current,members:[...current.members,{email:email.trim().toLowerCase(),name:'',role,active:true,revision:1,joined:false,self:false,clouds:[]}]}:current)}
    else{const r=await fetch('/api/members',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,role})});const body=await r.json() as {error:string};if(!r.ok)throw new Error(body.error);await load()}
-   setMessage('Права добавлены. Отправьте человеку ссылку на облака.');setEmail('');setRole('viewer');
+   setMessage(role==='member'?'Пользователь добавлен. Выдайте ему облака в списке ниже и отправьте ссылку.':'Администратор добавлен. Отправьте ему ссылку на облака.');setEmail('');setRole('member');
   }catch(e){setError((e as Error).message)}finally{setBusy(false)}
  }
  async function change(member:Member,nextRole:MemberRole,active:boolean){
@@ -33,6 +34,14 @@ export default function Admin(){
    if(demo)setData(current=>current?{...current,members:current.members.map(m=>m.email===member.email?{...m,role:nextRole,active,revision:m.revision+1}:m)}:current);
    else{const r=await fetch('/api/members',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:member.email,role:nextRole,active,revision:member.revision})});const body=await r.json() as {error:string};if(!r.ok)throw new Error(body.error);await load()}
    setMessage(active?'Права сохранены.':'Доступ к задачам закрыт.');
+  }catch(e){setError((e as Error).message)}finally{setBusy(false)}
+ }
+ async function grantClouds(member:Member,clouds:string[]){
+  setBusy(true);setError('');setMessage('');
+  try{
+   if(demo)setData(current=>current?{...current,members:current.members.map(m=>m.email===member.email?{...m,clouds}:m)}:current);
+   else{const r=await fetch('/api/members',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:member.email,clouds})});const body=await r.json() as {error:string};if(!r.ok)throw new Error(body.error);await load()}
+   setMessage('Облака для '+(member.name||member.email)+' сохранены: '+clouds.length+'.');
   }catch(e){setError((e as Error).message)}finally{setBusy(false)}
  }
  const fileInput=useRef<HTMLInputElement>(null);
@@ -56,18 +65,35 @@ export default function Admin(){
    {message&&<div className="admin-message" role="status">{message}</div>}
    {!data?<div className="admin-card">{error?<a href={signInHref("/admin")} target="_top">Войти</a>:'Загрузка…'}</div>:<>
     <section className="admin-card owner-card"><span className="member-avatar"><ShieldCheck size={23}/></span><div><h2>{data.owner.name||'Владелец'}</h2><p>{data.owner.email}</p><span className="role-pill">Суперадминистратор</span></div><LockKeyhole size={20} aria-label="Защищённый владелец"/><p className="owner-description">Полный доступ к задачам и пользователям. Только суперадминистратор назначает администраторов. Эту роль нельзя изменить или отозвать здесь.</p></section>
-    <section className="admin-card"><h2><UserPlus size={20}/>Добавить пользователя</h2><form className="invite-form" onSubmit={add}><label>Email для входа<input type="email" autoComplete="email" required maxLength={254} placeholder="name@example.com" value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Права<select value={role} onChange={e=>setRole(e.target.value as MemberRole)}><option value="viewer">Просмотр</option><option value="editor">Редактор</option>{data.session.role==='superadmin'&&<option value="admin">Администратор</option>}</select></label><button className="primary" disabled={busy||!email.trim()}>Добавить</button></form>
-     <p className="admin-hint">Пользователь получит доступ ко всем облакам, включая архив и корзину. Укажите тот же email, с которым человек будет входить на сайт.</p>
+    <section className="admin-card"><h2><UserPlus size={20}/>Добавить пользователя</h2><form className="invite-form" onSubmit={add}><label>Email для входа<input type="email" autoComplete="email" required maxLength={254} placeholder="name@example.com" value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Права<select value={role} onChange={e=>setRole(e.target.value as MemberRole)}><option value="member">Участник</option>{data.session.role==='superadmin'&&<option value="admin">Администратор</option>}</select></label><button className="primary" disabled={busy||!email.trim()}>Добавить</button></form>
+     <p className="admin-hint">Участник видит только облака, которые вы ему выдадите, и те, что создаст сам. Укажите тот же email, с которым человек будет входить на сайт.</p>
     </section>
     <section className="admin-card access-steps"><h2>Первый вход</h2><p>Отправьте человеку ссылку. При входе он укажет свой email и получит на него код. Эта панель сама писем не отправляет.</p><button className="secondary" onClick={copyLink}><Copy size={17}/>Скопировать ссылку на облака</button></section>
     {data.session.role==='superadmin'&&<section className="admin-card access-steps"><h2><Upload size={20}/>Перенести доску</h2><p>Загрузите файл, сохранённый кнопкой «Скачать копию доски». Он полностью заменит текущую доску у всех участников.</p><input ref={fileInput} type="file" accept="application/json,.json" hidden onChange={importBoard}/><button className="secondary" disabled={busy} onClick={()=>fileInput.current?.click()}><Upload size={17}/>Выбрать файл копии</button></section>}
-    <section><div className="members-heading"><h2>Участники <span>{data.members.length}</span></h2><button aria-label="Обновить пользователей" onClick={load} disabled={busy||demo}><RefreshCw size={18}/></button></div>{!data.members.length?<div className="admin-card no-members">Пока только вы. Добавьте email первого участника выше.</div>:<div className="member-list">{data.members.map(m=><MemberCard key={m.email+':'+m.revision} member={m} actor={data.session} busy={busy} onChange={change}/>)}</div>}</section>
-    <section className="role-guide"><p><b>Просмотр</b> — читать и искать задачи.</p><p><b>Редактор</b> — также добавлять, менять, выполнять и перемещать задачи.</p><p><b>Администратор</b> — также управлять зрителями и редакторами.</p></section>
+    <section><div className="members-heading"><h2>Участники <span>{data.members.length}</span></h2><button aria-label="Обновить пользователей" onClick={load} disabled={busy||demo}><RefreshCw size={18}/></button></div>{!data.members.length?<div className="admin-card no-members">Пока только вы. Добавьте email первого участника выше.</div>:<div className="member-list">{data.members.map(m=><MemberCard key={m.email+':'+m.revision} member={m} actor={data.session} clouds={data.clouds} busy={busy} onChange={change} onClouds={grantClouds}/>)}</div>}</section>
+    <section className="role-guide"><p><b>Участник</b> — видит и меняет только выданные ему облака и созданные им самим. В «Задачах» видит только дела из своих облаков.</p><p><b>Администратор</b> — видит и меняет все облака, приглашает участников и выдаёт им облака.</p><p><b>Суперадминистратор</b> — всё то же, а также назначает администраторов и переносит доску.</p></section>
    </>}
   </main>
  </div>;
 }
-function MemberCard({member,actor,busy,onChange}:{member:Member;actor:Session;busy:boolean;onChange:(m:Member,role:MemberRole,active:boolean)=>void}){
+function MemberCard({member,actor,clouds,busy,onChange,onClouds}:{member:Member;actor:Session;clouds:CloudInfo[];busy:boolean;onChange:(m:Member,role:MemberRole,active:boolean)=>void;onClouds:(m:Member,ids:string[])=>void}){
  const [role,setRole]=useState(member.role);const editable=!member.self&&canManage(actor.role,member.role,member.role);
- return <article className={'admin-card member-card'+(!member.active?' revoked':'')}><div className="member-info"><h3>{member.name||member.email}{member.self&&<small> · вы</small>}</h3>{member.name&&<p>{member.email}</p>}<span className={'member-status '+(!member.active?'off':'')}>{!member.active?'Доступ закрыт':member.joined?'Вход выполнен':'Ожидает первого входа'}</span></div><div className="member-controls">{editable?<><select aria-label={'Роль '+member.email} value={role} onChange={e=>setRole(e.target.value as MemberRole)} disabled={busy}><option value="viewer">Просмотр</option><option value="editor">Редактор</option>{actor.role==='superadmin'&&<option value="admin">Администратор</option>}</select><button className="secondary" disabled={busy||role===member.role} onClick={()=>onChange(member,role,member.active)}>Сохранить</button><button className={member.active?'revoke':'secondary'} disabled={busy} onClick={()=>onChange(member,member.role,!member.active)}>{member.active?'Закрыть доступ':'Вернуть доступ'}</button></>:<span className="role-pill">{roleNames[member.role]}</span>}</div></article>;
+ const [open,setOpen]=useState(false);const [query,setQuery]=useState('');
+ const known=new Set(clouds.map(c=>c.id));
+ const [selected,setSelected]=useState(()=>new Set(member.clouds.filter(id=>known.has(id))));
+ const granted=member.clouds.filter(id=>known.has(id)).length;
+ const changed=selected.size!==granted||[...selected].some(id=>!member.clouds.includes(id));
+ const shown=clouds.filter(c=>c.title.toLocaleLowerCase('ru').includes(query.trim().toLocaleLowerCase('ru')));
+ const toggle=(id:string)=>setSelected(current=>{const next=new Set(current);if(next.has(id))next.delete(id);else next.add(id);return next});
+ return <article className={'admin-card member-card'+(!member.active?' revoked':'')}><div className="member-info"><h3>{member.name||member.email}{member.self&&<small> · вы</small>}</h3>{member.name&&<p>{member.email}</p>}<span className={'member-status '+(!member.active?'off':'')}>{!member.active?'Доступ закрыт':member.joined?'Вход выполнен':'Ожидает первого входа'}</span></div><div className="member-controls">{editable?<><select aria-label={'Роль '+member.email} value={role} onChange={e=>setRole(e.target.value as MemberRole)} disabled={busy}><option value="member">Участник</option>{actor.role==='superadmin'&&<option value="admin">Администратор</option>}</select><button className="secondary" disabled={busy||role===member.role} onClick={()=>onChange(member,role,member.active)}>Сохранить</button><button className={member.active?'revoke':'secondary'} disabled={busy} onClick={()=>onChange(member,member.role,!member.active)}>{member.active?'Закрыть доступ':'Вернуть доступ'}</button></>:<span className="role-pill">{roleNames[member.role]}</span>}</div>
+  {member.role==='admin'?<p className="member-clouds-note">Видит все облака.</p>:<div className="member-clouds">
+   <button className="secondary member-clouds-toggle" aria-expanded={open} onClick={()=>setOpen(!open)}><Cloud size={17}/>Облака: {granted} из {clouds.length}</button>
+   {open&&<div className="member-clouds-panel">
+    {clouds.length>8&&<label className="member-clouds-search"><Search size={16}/><input placeholder="Найти облако" aria-label="Найти облако" value={query} onChange={e=>setQuery(e.target.value)}/></label>}
+    <div className="member-clouds-actions"><button type="button" disabled={busy||!editable} onClick={()=>setSelected(new Set([...selected,...shown.map(c=>c.id)]))}>Выбрать все</button><button type="button" disabled={busy||!editable} onClick={()=>setSelected(new Set([...selected].filter(id=>!shown.some(c=>c.id===id))))}>Снять все</button></div>
+    <ul className="member-clouds-list">{shown.map(c=><li key={c.id}><label><input type="checkbox" checked={selected.has(c.id)} disabled={busy||!editable} onChange={()=>toggle(c.id)}/><span className={'cloud-choice-dot color-'+c.color}/>{c.title}{c.archived&&<small> · в архиве</small>}</label></li>)}{!shown.length&&<li className="member-clouds-empty">Ничего не найдено</li>}</ul>
+    {editable&&<button className="primary" disabled={busy||!changed} onClick={()=>onClouds(member,[...selected])}>Сохранить облака</button>}
+   </div>}
+  </div>}
+ </article>;
 }

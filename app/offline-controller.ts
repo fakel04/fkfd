@@ -1,4 +1,4 @@
-import {canWrite,type Session} from './access-model.ts';
+import {canWrite,seesAllClouds,type Session} from './access-model.ts';
 import {ensureFocusBoard,boardBytes,MAX_BOARD_BYTES,type Board} from './board-model.ts';
 import {equal,mergeBoards,type SyncOperation,type MergeConflict,type Choices} from './board-merge.ts';
 import {accountKey,type OfflineRecord,type OfflineStorage,type Draft} from './offline-storage.ts';
@@ -137,7 +137,8 @@ export class OfflineController{
      if(first&&!first.sealed){
       // Persist the chosen protocol along with the seal. A lost response is retried
       // with exactly the same UUID, revision and payload, including after reload.
-      if(this.transport.compact&&r!.revision>0&&equal(first.operation.base,r!.base))first.wireRevision=r!.revision;
+      // Deltas apply to the whole stored board; a member's board is a filtered view, so members send full operations.
+      if(this.transport.compact&&seesAllClouds(r!.session.role)&&r!.revision>0&&equal(first.operation.base,r!.base))first.wireRevision=r!.revision;
       first.sealed=true;
      }return r!;
     });const first=record.queue[0];

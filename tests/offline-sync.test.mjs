@@ -6,13 +6,13 @@ import {syncBoard} from '../app/sync-store.ts';
 import {OfflineController,SyncError,ConnectionError} from '../app/offline-controller.ts';
 import {syncNotice} from '../app/sync-status.ts';
 import {accountKey} from '../app/offline-storage.ts';
-const session={role:'editor',userId:'user',boardId:'shared',name:'User',email:'user@example.com'};
+const session={role:'admin',userId:'user',boardId:'shared',name:'User',email:'user@example.com'};
 const note=(id,tasks)=>({id,title:id,text:'',tasks,color:'white',category:'',pinned:false,archived:false,deleted:false,created:'2026'});
 const board=()=>({categories:[],notes:[note('__focus_tasks__',[]),note('a',[{id:'x',text:'x',done:false},{id:'y',text:'y',done:false}])]});
 const edit=(b,f)=>{const v=structuredClone(b);f(v);return v};
 const op=(base,data)=>({id:crypto.randomUUID(),base,data});
 function db(){const sql=new DatabaseSync(':memory:');for(const n of readdirSync('drizzle').filter(n=>n.endsWith('.sql')).sort())sql.exec(readFileSync('drizzle/'+n,'utf8'));
- return{sql,prepare(q){let args=[];const statement={bind(...v){args=v;return statement},async first(){return sql.prepare(q).get(...args)||null},async run(){return{meta:{changes:Number(sql.prepare(q).run(...args).changes)}}}};return statement},async batch(statements){sql.exec('BEGIN');try{const results=[];for(const s of statements)results.push(await s.run());sql.exec('COMMIT');return results}catch(e){sql.exec('ROLLBACK');throw e}}};}
+ return{sql,prepare(q){let args=[];const statement={bind(...v){args=v;return statement},async first(){return sql.prepare(q).get(...args)||null},async all(){return{results:sql.prepare(q).all(...args)}},async run(){return{meta:{changes:Number(sql.prepare(q).run(...args).changes)}}}};return statement},async batch(statements){sql.exec('BEGIN');try{const results=[];for(const s of statements)results.push(await s.run());sql.exec('COMMIT');return results}catch(e){sql.exec('ROLLBACK');throw e}}};}
 function seeded(){const d=db();d.sql.prepare('INSERT INTO boards VALUES (?,?,?,?)').run(session.boardId,JSON.stringify(board()),1,'now');return d}
 test('server receipt makes response-loss replay idempotent, including subsequent remote edits',async()=>{
  const d=seeded(),b=board(),o=op(b,edit(b,v=>v.notes[1].tasks[0].done=true));const first=await syncBoard(d,session,o);assert.equal(first.revision,2);
