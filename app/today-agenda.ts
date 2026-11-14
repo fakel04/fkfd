@@ -1,4 +1,4 @@
-import {isFocusNote,sourceTitle,taskDueDate,type Board,type Note,type Task} from './board-model.ts';
+import {isFocusNote,ensureFocusBoard,sourceTitle,taskDueDate,FOCUS_NOTE_ID,type Board,type Note,type Task} from './board-model.ts';
 import {dueParts,makeDueDate,validDate} from './task-due.ts';
 
 // «Сегодня» is computed, never stored: every unfinished task with a due date from the
@@ -21,7 +21,7 @@ export function buildAgenda(board:Board,today:string):AgendaGroup[]{
   for(const task of note.tasks){
    if(task.done)continue;
    const {date,time}=dueParts(taskDueDate(task));if(!date)continue;
-   items.push({note,task,date,time,source:isFocusNote(note)?sourceTitle(board,task):note.title||'Без названия'});
+   items.push({note,task,date,time,source:isFocusNote(note)?(task.origin?sourceTitle(board,task):''):note.title||'Без названия'});
   }
  }
  // Within a day: tasks without a time first, then by time.
@@ -76,20 +76,28 @@ export function moveAgendaTask(board:Board,today:string,taskId:string,date:strin
 
 /**
  * Enter in «Сегодня», as in any cloud: the text before the caret stays, the text after it
- * becomes a new task right below. The new task lives in the same cloud as the original
- * (in «Задачи» it keeps the same source cloud) and gets the same day, without a time.
+ * becomes a new task right below, with the same day and no time.
+ * The new task has no source cloud: it goes to «Задачи», and «В облако» later asks where
+ * to put it. `detached:false` (members, who cannot see cloud-less tasks) keeps it in the
+ * cloud of the original task instead.
  */
-export function splitAgendaTask(board:Board,today:string,taskId:string,before:string,after:string,createId:()=>string=()=>crypto.randomUUID()):{board:Board;newId:string}|null{
+export function splitAgendaTask(board:Board,today:string,taskId:string,before:string,after:string,createId:()=>string=()=>crypto.randomUUID(),detached=true):{board:Board;newId:string}|null{
  const all=buildAgenda(board,today).flatMap(group=>group.items),index=all.findIndex(item=>item.task.id===taskId);
  if(index<0)return null;
  const {note,task,date}=all[index];
- if(note.tasks.length>=500)return null;
+ const home=detached?FOCUS_NOTE_ID:note.id;
+ const base=detached?ensureFocusBoard(board):board,target=base.notes.find(item=>item.id===home);
+ if(!target||target.tasks.length>=500)return null;
  const newId=createId();
- const created:Task={id:newId,text:after,done:false,dueDate:date,...(task.pinned?{pinned:true}:{}),...(isFocusNote(note)&&task.origin?{focused:true,origin:task.origin}:{})};
- const inserted:Board={...board,notes:board.notes.map(item=>{
-  if(item.id!==note.id)return item;
-  const tasks=item.tasks.map(t=>t.id===taskId?{...t,text:before}:t),at=tasks.findIndex(t=>t.id===taskId);
-  tasks.splice(at+1,0,created);return {...item,tasks};
+ const created:Task=detached?{id:newId,text:after,done:false,dueDate:date,focused:true}
+  :{id:newId,text:after,done:false,dueDate:date,...(task.pinned?{pinned:true}:{}),...(isFocusNote(note)&&task.origin?{focused:true,origin:task.origin}:{})};
+ const inserted:Board={...base,notes:base.notes.map(item=>{
+  let tasks=item.id===note.id?item.tasks.map(t=>t.id===taskId?{...t,text:before}:t):item.tasks;
+  if(item.id===home){
+   // Right after the original when it is in the same list, otherwise at the end.
+   const at=tasks.findIndex(t=>t.id===taskId);tasks=[...tasks];tasks.splice(at<0?tasks.length:at+1,0,created);
+  }
+  return tasks===item.tasks?item:{...item,tasks};
  })};
  const next=all.slice(index+1).find(item=>item.date===date)?.task.id??null;
  return {board:moveAgendaTask(inserted,today,newId,date,next),newId};
