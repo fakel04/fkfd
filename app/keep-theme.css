@@ -189,3 +189,6 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
 .swipe-actions button{padding:0;gap:0}
 .swipe-actions svg{width:22px;height:22px}
 .swipe-open .swipe-content,.keep-layout .note .swipe-open .swipe-content,.agenda-list .swipe-open .swipe-content{min-height:44px}
+
+/* The panel takes focus only programmatically (for the keyboard trap); no ring around the screen. */
+.modal-panel:focus{outline:none}
