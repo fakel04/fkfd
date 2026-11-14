@@ -25,7 +25,7 @@ import { TaskParentPicker } from './task-parent-picker';
 import { createParentResolver, canChooseParent } from './task-relations';
 import { TaskCheckbox } from './task-checkbox';
 import { TaskDetails, TaskText } from './task-details';
-import { buildAgenda, agendaUrgentCount, moveAgendaTask, TODAY_VIEW } from './today-agenda';
+import { buildAgenda, agendaUrgentCount, moveAgendaTask, splitAgendaTask, TODAY_VIEW } from './today-agenda';
 import { localDate } from './task-due';
 import { AgendaTasks } from './agenda-tasks';
 import { expandTaskLines, prepareTaskList } from './task-list-edit';
@@ -309,6 +309,11 @@ export default function Home(){
     onOpen={note=>openEditor(source(note.id,note))}
     onPin={(note,task)=>patch(note.id,{tasks:source(note.id,note).tasks.map(item=>item.id===task.id?{...item,pinned:!item.pinned}:item)})}
     onEditText={(note,task,text)=>patch(note.id,{tasks:source(note.id,note).tasks.map(item=>item.id===task.id?{...item,text}:item)})}
+    onSplit={(_note,task,before,after)=>{
+     if(!writeAllowed.current||conflict)return null;let created:string|null=null;
+     flushSync(()=>update(current=>{const result=splitAgendaTask(current,todayKey,task.id,before,after);if(!result)return current;created=result.newId;return result.board}));
+     if(!created)notify('Не удалось добавить дело: облако заполнено.');return created;
+    }}
     onFocus={(note,task)=>toggleTaskFocus(note.id,task.id)}
     onCloud={(note,task)=>openTaskActions(note.id,task.id,false,'cloud')}
     onMore={(note,task)=>openTaskActions(note.id,task.id,false,'more')}/>

@@ -73,3 +73,24 @@ export function moveAgendaTask(board:Board,today:string,taskId:string,date:strin
   return {...note,tasks:note.tasks.map(task=>order.has(task.id)?{...task,agendaOrder:order.get(task.id),...(task.id===taskId?{dueDate}:{})}:task)};
  })};
 }
+
+/**
+ * Enter in «Сегодня», as in any cloud: the text before the caret stays, the text after it
+ * becomes a new task right below. The new task lives in the same cloud as the original
+ * (in «Задачи» it keeps the same source cloud) and gets the same day, without a time.
+ */
+export function splitAgendaTask(board:Board,today:string,taskId:string,before:string,after:string,createId:()=>string=()=>crypto.randomUUID()):{board:Board;newId:string}|null{
+ const all=buildAgenda(board,today).flatMap(group=>group.items),index=all.findIndex(item=>item.task.id===taskId);
+ if(index<0)return null;
+ const {note,task,date}=all[index];
+ if(note.tasks.length>=500)return null;
+ const newId=createId();
+ const created:Task={id:newId,text:after,done:false,dueDate:date,...(task.pinned?{pinned:true}:{}),...(isFocusNote(note)&&task.origin?{focused:true,origin:task.origin}:{})};
+ const inserted:Board={...board,notes:board.notes.map(item=>{
+  if(item.id!==note.id)return item;
+  const tasks=item.tasks.map(t=>t.id===taskId?{...t,text:before}:t),at=tasks.findIndex(t=>t.id===taskId);
+  tasks.splice(at+1,0,created);return {...item,tasks};
+ })};
+ const next=all.slice(index+1).find(item=>item.date===date)?.task.id??null;
+ return {board:moveAgendaTask(inserted,today,newId,date,next),newId};
+}
