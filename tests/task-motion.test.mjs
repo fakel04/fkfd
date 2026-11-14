@@ -33,7 +33,7 @@ test('hit testing and insertion work with short, empty and tall task rows',()=>{
 class Element{
  constructor(tag='div'){
   this.tagName=tag.toUpperCase();this.children=[];this.parentElement=null;this.attributes={};this.dataset={};this.className='';this.value='';this.animations=[];
-  this.style={visibility:'',transform:'',setProperty(name,value){this[name]=value}};
+  this.style={visibility:'',display:'',transform:'',setProperty(name,value){this[name]=value}};
   this.classList={add:(...names)=>{this.className=[...new Set([...this.className.split(' '),...names])].join(' ')},remove:(...names)=>{this.className=this.className.split(' ').filter(name=>!names.includes(name)).join(' ')}};
   this.rect={left:16,top:100,width:330,height:36};
  }
@@ -47,6 +47,8 @@ class Element{
  querySelectorAll(selector){return this.children.flatMap(child=>[...(child.matches(selector)?[child]:[]),...child.querySelectorAll(selector)])}
  querySelector(selector){return this.querySelectorAll(selector)[0]||null}
  appendChild(child){child.remove();child.parentElement=this;this.children.push(child);return child}
+ insertBefore(child,before){child.remove();const index=before?this.children.indexOf(before):this.children.length;if(index<0)throw new Error('Not a child');child.parentElement=this;this.children.splice(index,0,child);return child}
+ get nextElementSibling(){if(!this.parentElement)return null;return this.parentElement.children[this.parentElement.children.indexOf(this)+1]||null}
  remove(){if(this.parentElement){const parent=this.parentElement;parent.children=parent.children.filter(child=>child!==this);this.parentElement=null}}
  get isConnected(){return this===globalThis.document?.body||!!this.parentElement?.isConnected}
  setAttribute(name,value){this.attributes[name]=value;if(name.startsWith('data-'))this.dataset[name.slice(5).replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]=value}
@@ -136,6 +138,33 @@ test('FLIP subtracts ancestor displacement so card and task do not move twice',(
  assert.equal(card.animations[0].keyframes[0].transform,'translate(0px,-40px)');
  assert.equal(row.animations[0].keyframes[0].transform,'translate(0px,-20px)');cleanup();
  assert.equal(row.animations[0].cancelled,true);
+});
+
+test('grouped dragging opens a row-sized gap, animates neighbors, and shares the ordinary 300ms landing',async()=>{
+ const f=fixture();let commits=0;
+ const heights=new Map(Object.values(f.rows).map(({wrapper})=>[wrapper,wrapper.getBoundingClientRect().height]));
+ for(const [id,{wrapper}] of Object.entries(f.rows)){
+  wrapper.setAttribute('data-agenda-task-id',id);
+  wrapper.rect=()=>{let top=100;for(const child of f.root.children){if(child===wrapper)break;if(child.style.display!=='none')top+=(heights.get(child)??parseFloat(child.style.height))+9}return {left:16,top,width:330,height:heights.get(wrapper)}};
+ }
+ const lift=new motion.GroupedTaskLift(f.root,f.rows.a.wrapper,25,118);
+ assert.equal(f.rows.a.wrapper.style.display,'none');assert.equal(lift.slot.style.height,'36px');
+ lift.move(25,280,f.root,f.rows.c.wrapper);
+ assert.equal(commits,0);assert.equal(lift.slot.nextElementSibling,f.rows.c.wrapper);
+ const neighbor=f.rows.b.wrapper.animations.at(-1);
+ assert.equal(neighbor.options.duration,190);assert.equal(neighbor.options.easing,'cubic-bezier(.22,1,.36,1)');
+ const cleanup=lift.finish(()=>{commits++;f.reorder(['b','a','c'])},true);
+ assert.equal(commits,1);assert.equal(f.body.querySelectorAll('.task-drop-placeholder').length,0);
+ const landing=lift.ghost.element.animations.at(-1);assert.equal(landing.options.duration,300);assert.equal(landing.options.easing,'cubic-bezier(.22,1,.36,1)');
+ landing.finish();await Promise.resolve();assert.equal(f.rows.a.wrapper.style.visibility,'');assert.equal(f.rows.a.wrapper.style.display,'');assert.equal(f.body.querySelectorAll('.task-motion-ghost').length,0);cleanup();assert.equal(commits,1);
+});
+test('grouped preview cleanup and reduced motion restore the source without leaving gaps or ghosts',()=>{
+ for(const reduce of [false,true]){
+  const f=fixture({reduce});f.rows.a.wrapper.setAttribute('data-agenda-task-id','a');
+  const lift=new motion.GroupedTaskLift(f.root,f.rows.a.wrapper,25,118);lift.move(25,320,f.root,null);lift.dispose();
+  assert.equal(f.rows.a.wrapper.style.display,'');assert.equal(f.body.querySelectorAll('.task-drop-placeholder,.task-motion-ghost').length,0);
+  if(reduce){let commits=0;const next=new motion.GroupedTaskLift(f.root,f.rows.a.wrapper,25,118);next.finish(()=>commits++,true);assert.equal(commits,1);assert.equal(f.rows.a.wrapper.style.visibility,'');assert.equal(f.body.querySelectorAll('.task-motion-ghost').length,0)}
+ }
 });
 
 // Run the actual transfer hook with only React lifecycle and timer scheduling

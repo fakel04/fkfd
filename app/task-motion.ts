@@ -7,8 +7,8 @@ const rowId=(row:HTMLElement)=>row.dataset.editorTaskId||row.dataset.taskId||'';
 const running=new WeakMap<Element,Animation>();
 export type Layout=Map<HTMLElement,DOMRect>;
 
-export function captureTaskLayout(host:Element|Document):Layout{
- return new Map([...host.querySelectorAll<HTMLElement>('.swipe-task,.note')].map(element=>[element,element.getBoundingClientRect()]));
+export function captureTaskLayout(host:Element|Document,selector='.swipe-task,.note'):Layout{
+ return new Map([...host.querySelectorAll<HTMLElement>(selector)].map(element=>[element,element.getBoundingClientRect()]));
 }
 export function animateTaskLayout(before:Layout,skip?:HTMLElement,duration=300){
  if(reducedMotion())return()=>{};
@@ -61,6 +61,58 @@ export function pulseTask(element:HTMLElement){
  return()=>animation.cancel();
 }
 
+/** The same landing motion for ordinary lists and grouped agendas. */
+function landTaskGhost(ghost:ReturnType<typeof taskGhost>,destination:HTMLElement,cleanupLayout:()=>void,onCleanup:()=>void,pulse:boolean,rect:DOMRect,restoreVisibility=destination.style.visibility){
+ const from=ghost.element.getBoundingClientRect();destination.style.visibility='hidden';
+ const element=ghost.element;element.style.transform='none';Object.assign(element.style,{left:from.left+'px',top:from.top+'px'});
+ const cleanup=()=>{element.remove();cleanupLayout();destination.style.visibility=restoreVisibility;onCleanup()};
+ if(reducedMotion()){cleanup();return cleanup}
+ const animation=element.animate([{transform:'scale(1.015)',opacity:1},{transform:`translate(${rect.left-from.left}px,${rect.top-from.top}px) scale(1)`,opacity:destination.isConnected?1:0}],{duration:300,easing:EASE,fill:'forwards'});
+ let ended=false;const done=()=>{if(ended)return;ended=true;cleanup();animation.cancel();if(pulse&&destination.isConnected)pulseTask(destination)};
+ animation.finished.then(done,done);
+ return()=>{if(ended)return;ended=true;cleanup();animation.cancel()};
+}
+
+/** Layout position, excluding an in-progress FLIP animation. */
+export function taskLayoutRect(element:HTMLElement){
+ const rect=element.getBoundingClientRect(),transform=getComputedStyle(element).transform;
+ if(!transform||transform==='none')return rect;
+ const matrix=new DOMMatrixReadOnly(transform);
+ return new DOMRect(rect.left-matrix.m41,rect.top-matrix.m42,rect.width,rect.height);
+}
+
+/** A real, row-sized gap lets both day headings and neighbors move smoothly. */
+export class GroupedTaskLift{
+ root:HTMLElement;row:HTMLElement;id:string;ghost:ReturnType<typeof taskGhost>;slot:HTMLDivElement;
+ pointerX:number;pointerY:number;sourceDisplay:string;stopped=false;cleanupLayout:(()=>void)|null=null;
+ constructor(root:HTMLElement,row:HTMLElement,x:number,y:number){
+  this.root=root;this.row=row;this.id=row.dataset.agendaTaskId!;this.pointerX=x;this.pointerY=y;this.sourceDisplay=row.style.display;
+  this.ghost=taskGhost(row);this.ghost.element.classList.add('task-lift-ghost');
+  this.slot=document.createElement('div');this.slot.className='task-drop-placeholder';this.slot.setAttribute('aria-hidden','true');this.slot.style.height=this.ghost.from.height+'px';
+  row.parentElement!.insertBefore(this.slot,row);row.style.display='none';root.classList.add('task-sorting');
+ }
+ layout(){return captureTaskLayout(this.root,'[data-agenda-task-id],.agenda-date')}
+ move(x:number,y:number,list?:HTMLElement,before:HTMLElement|null=null){
+  if(this.stopped)return;
+  this.ghost.element.style.transform=`translate3d(${x-this.pointerX}px,${y-this.pointerY}px,0) scale(1.015)`;
+  this.slot.style.visibility=list?'visible':'hidden';if(!list)return;
+  let next=this.slot.nextElementSibling;if(next===this.row)next=next.nextElementSibling;
+  if(this.slot.parentElement===list&&next===before)return;
+  const layout=this.layout();list.insertBefore(this.slot,before);
+  this.cleanupLayout=animateTaskLayout(layout,this.row,190);
+ }
+ finish(commit:()=>void,pulse=false){
+  if(this.stopped)return()=>{};this.stopped=true;
+  const before=this.layout();this.cleanupLayout?.();this.slot.remove();this.row.style.display=this.sourceDisplay;this.root.classList.remove('task-sorting');
+  try{commit()}catch(error){this.ghost.element.remove();throw error}
+  const destination=[...this.root.querySelectorAll<HTMLElement>('[data-agenda-task-id]')].find(row=>row.dataset.agendaTaskId===this.id);
+  const rect=destination?.getBoundingClientRect(),cleanupLayout=animateTaskLayout(before,destination);
+  if(!destination||!rect){this.ghost.element.remove();cleanupLayout();return()=>{}}
+  return landTaskGhost(this.ghost,destination,cleanupLayout,()=>{},pulse,rect);
+ }
+ dispose(){this.stopped=true;this.cleanupLayout?.();this.slot.remove();this.ghost.element.remove();this.row.style.display=this.sourceDisplay;this.root.classList.remove('task-sorting')}
+}
+
 /** Pointer preview only. Task data is committed once on drop, never on hover. */
 export class TaskLift{
  root:HTMLElement;row:HTMLElement;id:string;pointerX:number;pointerY:number;index:number;
@@ -109,14 +161,8 @@ export class TaskLift{
   const destination=findTarget?.()||(target?wrap(target):this.source);
   const rect=destination.isConnected?destination.getBoundingClientRect():from;
   const cleanupLayout=animateTaskLayout(before,destination);
-  const previous=destination===this.source?this.sourceVisibility:destination.style.visibility;destination.style.visibility='hidden';
-  const ghost=this.ghost.element;ghost.style.transform='none';Object.assign(ghost.style,{left:from.left+'px',top:from.top+'px'});
-  const cleanup=()=>{ghost.remove();cleanupLayout();destination.style.visibility=previous;this.source.style.visibility=this.sourceVisibility;};
-  if(reducedMotion()){cleanup();return cleanup;}
-  const animation=ghost.animate([{transform:'scale(1.015)',opacity:1},{transform:`translate(${rect.left-from.left}px,${rect.top-from.top}px) scale(1)`,opacity:destination.isConnected?1:0}],{duration:300,easing:EASE,fill:'forwards'});
-  let ended=false;const done=()=>{if(ended)return;ended=true;cleanup();animation.cancel();if(commit&&destination.isConnected)pulseTask(destination)};
-  animation.finished.then(done,done);
-  return()=>{if(ended)return;ended=true;cleanup();animation.cancel();};
+  const previous=destination===this.source?this.sourceVisibility:destination.style.visibility;
+  return landTaskGhost(this.ghost,destination,cleanupLayout,()=>{this.source.style.visibility=this.sourceVisibility},!!commit,rect,previous);
  }
  dispose(){this.stopped=true;this.slot.remove();this.ghost.element.remove();this.root.classList.remove('task-sorting');for(const {element} of this.rows){element.classList.remove('task-sort-shift');element.style.transform='';}this.source.style.visibility=this.sourceVisibility;}
 }

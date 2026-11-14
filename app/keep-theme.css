@@ -60,7 +60,7 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
 /* The lifted row keeps its real size; only its preview moves until drop. */
 .task-sorting{user-select:none;-webkit-user-select:none;overflow-anchor:none}
 .task-sort-shift{transition:transform 190ms cubic-bezier(.22,1,.36,1);will-change:transform}
-.task-drop-slot{position:fixed;z-index:1050;pointer-events:none;box-shadow:inset 0 0 0 2px #7893a6;border:1px dashed #7893a6;border-radius:7px;background:#7893a615}
+.task-drop-slot{position:fixed;z-index:1050;pointer-events:none}.task-drop-slot,.task-drop-placeholder{box-shadow:inset 0 0 0 2px #7893a6;border:1px dashed #7893a6;border-radius:7px;background:#7893a615}
 .task-motion-ghost{position:fixed;z-index:1100;pointer-events:none;overflow:hidden;transform-origin:top left;border-radius:8px;background:var(--task-surface,#fff);box-shadow:0 10px 28px #263c5030,0 0 0 1px #70889e50;will-change:transform,opacity}
 .task-motion-ghost .task-motion-skin,.task-motion-ghost .note{display:block;padding:0!important;margin:0!important;min-height:0!important;height:auto;border:0;box-shadow:none;background:var(--task-surface,#fff)}
 .task-motion-ghost .swipe-task,.task-motion-ghost .editor-task{margin:0!important;opacity:1;visibility:visible}
@@ -142,7 +142,7 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
 
 .agenda-drag-handle{display:flex;align-items:center;justify-content:center;flex:none;width:22px;min-height:32px;padding:0;color:#85898c;touch-action:none;user-select:none;-webkit-user-select:none}
 .agenda-list .agenda-group{padding-bottom:10px;border-radius:6px;min-width:0}
-.agenda-list .agenda-row{min-height:32px}.agenda-drag-source{opacity:.25}
+.agenda-list .agenda-row{min-height:32px}
 .agenda-drop-day{background:#4262820a}.agenda-empty-drop{font-size:12px;color:#70757a;padding:12px 5px;min-height:40px;border:1px dashed #9aa0a6;border-radius:5px}
-.agenda-drop-line{position:fixed;height:3px;background:#426282;z-index:1110;pointer-events:none;border-radius:2px}
+.task-drop-placeholder{flex:none;min-height:1px;width:100%;pointer-events:none}.agenda-group:has(.task-drop-placeholder)>.agenda-empty-drop{display:none}
 .agenda-sorting{user-select:none;-webkit-user-select:none}
