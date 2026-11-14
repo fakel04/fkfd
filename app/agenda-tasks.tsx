@@ -16,16 +16,25 @@ type Gesture={id:string;pointerId:number;startX:number;startY:number;x:number;y:
 type TaskAction=(note:Note,task:Task)=>void;
 type Props={groups:AgendaGroup[];today:string;full:boolean;readOnly:boolean;onMove:(id:string,date:string,beforeId:string|null)=>void;onToggle:TaskAction;onOpen:(note:Note)=>void;
  // Same actions as in an ordinary cloud, applied to the task in its own cloud.
- onPin?:TaskAction;onFocus?:TaskAction;onCloud?:TaskAction;onMore?:TaskAction;onEditText?:(note:Note,task:Task,text:string)=>void};
+ onPin?:TaskAction;onFocus?:TaskAction;onCloud?:TaskAction;onMore?:TaskAction;onEditText?:(note:Note,task:Task,text:string)=>void;
+ // Enter: returns the id of the new task created below, or null.
+ onSplit?:(note:Note,task:Task,before:string,after:string)=>string|null};
 
-/** Inline text editing; the change is saved to the task's cloud when editing ends. */
-function AgendaText({task,readOnly,onCommit}:{task:Task;readOnly:boolean;onCommit:(text:string)=>void}){
- const [text,setText]=useState(task.text);const editing=useRef(false);
- useEffect(()=>{if(!editing.current)setText(task.text)},[task.text]);
- const commit=()=>{editing.current=false;const next=text.replace(/\s*\n\s*/g,' ');if(next!==task.text)onCommit(next)};
+/** Inline text editing; the change is saved to the task's cloud when editing ends. Enter splits the task. */
+function AgendaText({task,readOnly,onCommit,onSplit}:{task:Task;readOnly:boolean;onCommit:(text:string)=>void;onSplit?:(before:string,after:string)=>void}){
+ const [text,setText]=useState(task.text);const editing=useRef(false);const value=useRef(task.text);
+ useEffect(()=>{if(!editing.current){setText(task.text);value.current=task.text}},[task.text]);
+ const set=(next:string)=>{value.current=next;setText(next)};
+ const commit=()=>{editing.current=false;const next=value.current.replace(/\s*\n\s*/g,' ');if(next!==task.text)onCommit(next)};
  return <TaskInput readOnly={readOnly} aria-label={'Дело: '+(task.text||'Без названия')} value={text} placeholder="Без названия"
-  onFocus={()=>{editing.current=true}} onChange={event=>setText(event.target.value)} onBlur={commit}
-  onTaskBreak={()=>{(document.activeElement as HTMLElement|null)?.blur()}} onTaskLines={value=>setText(value.replace(/\s*\n\s*/g,' '))}/>;
+  onFocus={()=>{editing.current=true}} onChange={event=>set(event.target.value)} onBlur={commit}
+  onTaskBreak={edit=>{
+   if(!onSplit){(document.activeElement as HTMLElement|null)?.blur();return}
+   const start=Math.max(0,Math.min(edit.start,edit.value.length)),end=Math.max(start,Math.min(edit.end,edit.value.length));
+   const before=edit.value.slice(0,start),after=edit.value.slice(end);
+   // The split saves both parts; the blur that follows must not save the old full text.
+   set(before);editing.current=false;onSplit(before,after);
+  }} onTaskLines={next=>set(next.replace(/\s*\n\s*/g,' '))}/>;
 }
 
 export function AgendaTasks(props:Props){
@@ -123,7 +132,11 @@ export function AgendaTasks(props:Props){
      const row=<div className="task-row agenda-row" key={task.id} data-agenda-task-id={task.id}>
      {!props.readOnly&&<button type="button" className="agenda-drag-handle drag-handle" aria-label={'Переместить дело '+(task.text||'Без названия')} title="Перетащить дело. С клавиатуры: ↑ и ↓" onPointerDown={event=>start(event,task.id)} onKeyDown={event=>keyboard(event,task.id)} onClick={event=>event.stopPropagation()}><GripVertical size={18}/></button>}
      <TaskCheckbox done={task.done} label={task.text||'Без названия'} disabled={props.readOnly} onToggleDone={()=>props.onToggle(note,task)}/>
-     {props.full?<div className="agenda-task agenda-task-edit"><AgendaText task={task} readOnly={props.readOnly} onCommit={text=>props.onEditText?.(note,task,text)}/><button type="button" className="agenda-source" onClick={()=>props.onOpen(note)} title="Открыть облако">{time&&<b>{time} · </b>}{source} ↗</button></div>:<span className="agenda-task"><span className="task-label"><TaskText text={task.text||'Без названия'}/></span><small>{time&&<b>{time} · </b>}{source}</small></span>}
+     {props.full?<div className="agenda-task agenda-task-edit"><AgendaText task={task} readOnly={props.readOnly} onCommit={text=>props.onEditText?.(note,task,text)} onSplit={props.onSplit&&((before,after)=>{
+       const id=props.onSplit!(note,task,before,after);if(!id)return;
+       // Move the caret to the start of the new task, as in an ordinary cloud.
+       requestAnimationFrame(()=>{const input=[...root.current?.querySelectorAll<HTMLElement>('[data-agenda-task-id]')??[]].find(row=>row.dataset.agendaTaskId===id)?.querySelector<HTMLTextAreaElement>('textarea');input?.focus({preventScroll:false});input?.setSelectionRange(0,0)});
+      })}/><span className="agenda-source">{time&&<b>{time} · </b>}{source}</span></div>:<span className="agenda-task"><span className="task-label"><TaskText text={task.text||'Без названия'}/></span><small>{time&&<b>{time} · </b>}{source}</small></span>}
     </div>;
      return props.full?<SwipeTask key={task.id} label={task.text||'Без названия'} pinned={task.pinned} focused={isFocusNote(note)} disabled={props.readOnly} showMenuButton={false}
       onPin={()=>props.onPin?.(note,task)} onFocus={()=>props.onFocus?.(note,task)} onCloud={()=>props.onCloud?.(note,task)} onMore={()=>props.onMore?.(note,task)}>{row}</SwipeTask>:row;

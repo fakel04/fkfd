@@ -68,3 +68,20 @@ test('a drop merges with a simultaneous text edit without moving or duplicating 
  assert.equal(merged.conflicts.length,0);assert.equal(find(merged.data,'f1').text,'Новое название');assert.equal(find(merged.data,'f1').dueDate,'2026-11-15');
  assert.equal(merged.data.notes.flatMap(note=>note.tasks).filter(task=>task.id==='f1').length,1);
 });
+test('Enter splits a task in «Сегодня»: the new task joins the same cloud and day, right below',async()=>{
+ const {splitAgendaTask}=await import('../app/today-agenda.ts');
+ const b={categories:[],notes:[
+  note('__focus_tasks__',[task('f1','2026-11-14',{focused:true,origin:{noteId:'home',title:'Дом',color:'white',category:'',index:0}})],{kind:'focus'}),
+  note('work',[task('w1','2026-11-14',{pinned:true}),task('w2',new Date(2026,10,14,9,30).toISOString()),task('w3','2026-11-15')]),
+ ]};
+ const r=splitAgendaTask(b,'2026-11-14','w1','Позвонить','Написать',()=>'new');
+ const work=r.board.notes[1];
+ assert.deepEqual(work.tasks.map(t=>[t.id,t.text]),[['w1','Позвонить'],['new','Написать'],['w2','w2'],['w3','w3']]);
+ assert.equal(work.tasks[1].dueDate,'2026-11-14');assert.equal(work.tasks[1].pinned,true);
+ const today=buildAgenda(r.board,'2026-11-14').find(g=>g.key==='2026-11-14').items.map(i=>i.task.id);
+ assert.deepEqual(today.slice(today.indexOf('w1'),today.indexOf('w1')+2),['w1','new']);
+ // In «Задачи» the new task keeps the same source cloud.
+ const f=splitAgendaTask(b,'2026-11-14','f1','a','',()=>'nf').board.notes[0].tasks[1];
+ assert.equal(f.id,'nf');assert.equal(f.focused,true);assert.equal(f.origin.noteId,'home');assert.equal(f.text,'');
+ assert.equal(splitAgendaTask(b,'2026-11-14','missing','a','b'),null);
+});
