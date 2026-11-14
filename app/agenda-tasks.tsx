@@ -26,7 +26,7 @@ function AgendaText({task,readOnly,onCommit,onSplit}:{task:Task;readOnly:boolean
  useEffect(()=>{if(!editing.current){setText(task.text);value.current=task.text}},[task.text]);
  const set=(next:string)=>{value.current=next;setText(next)};
  const commit=()=>{editing.current=false;const next=value.current.replace(/\s*\n\s*/g,' ');if(next!==task.text)onCommit(next)};
- return <TaskInput readOnly={readOnly} aria-label={'Дело: '+(task.text||'Без названия')} value={text} placeholder="Без названия"
+ return <TaskInput readOnly={readOnly} aria-label={'Дело: '+(task.text||'Без названия')} value={text}
   onFocus={()=>{editing.current=true}} onChange={event=>set(event.target.value)} onBlur={commit}
   onTaskBreak={edit=>{
    if(!onSplit){(document.activeElement as HTMLElement|null)?.blur();return}
@@ -134,9 +134,11 @@ export function AgendaTasks(props:Props){
      <TaskCheckbox done={task.done} label={task.text||'Без названия'} disabled={props.readOnly} onToggleDone={()=>props.onToggle(note,task)}/>
      {props.full?<div className="agenda-task agenda-task-edit"><AgendaText task={task} readOnly={props.readOnly} onCommit={text=>props.onEditText?.(note,task,text)} onSplit={props.onSplit&&((before,after)=>{
        const id=props.onSplit!(note,task,before,after);if(!id)return;
-       // Move the caret to the start of the new task, as in an ordinary cloud.
-       requestAnimationFrame(()=>{const input=[...root.current?.querySelectorAll<HTMLElement>('[data-agenda-task-id]')??[]].find(row=>row.dataset.agendaTaskId===id)?.querySelector<HTMLTextAreaElement>('textarea');input?.focus({preventScroll:false});input?.setSelectionRange(0,0)});
-      })}/><span className="agenda-source">{time&&<b>{time} · </b>}{source}</span></div>:<span className="agenda-task"><span className="task-label"><TaskText text={task.text||'Без названия'}/></span><small>{time&&<b>{time} · </b>}{source}</small></span>}
+       // Move the caret to the start of the new task right away, inside the key event:
+       // iPhone keeps the keyboard open only for focus changes made synchronously.
+       const input=[...root.current?.querySelectorAll<HTMLElement>('[data-agenda-task-id]')??[]].find(row=>row.dataset.agendaTaskId===id)?.querySelector<HTMLTextAreaElement>('textarea');
+       input?.focus({preventScroll:true});input?.setSelectionRange(0,0);input?.scrollIntoView({block:'nearest'});
+      })}/>{(time||source)&&<span className="agenda-source">{time&&<b>{time}{source?' · ':''}</b>}{source}</span>}</div>:<span className="agenda-task"><span className="task-label"><TaskText text={task.text||'Без названия'}/></span><small>{time&&<b>{time} · </b>}{source}</small></span>}
     </div>;
      return props.full?<SwipeTask key={task.id} label={task.text||'Без названия'} pinned={task.pinned} focused={isFocusNote(note)} disabled={props.readOnly} showMenuButton={false}
       onPin={()=>props.onPin?.(note,task)} onFocus={()=>props.onFocus?.(note,task)} onCloud={()=>props.onCloud?.(note,task)} onMore={()=>props.onMore?.(note,task)}>{row}</SwipeTask>:row;

@@ -311,7 +311,8 @@ export default function Home(){
     onEditText={(note,task,text)=>patch(note.id,{tasks:source(note.id,note).tasks.map(item=>item.id===task.id?{...item,text}:item)})}
     onSplit={(_note,task,before,after)=>{
      if(!writeAllowed.current||conflict)return null;let created:string|null=null;
-     flushSync(()=>update(current=>{const result=splitAgendaTask(current,todayKey,task.id,before,after);if(!result)return current;created=result.newId;return result.board}));
+     flushSync(()=>update(current=>{// Owner and admins get a cloud-less task in «Задачи»; members cannot see those, so theirs stays in the cloud.
+     const result=splitAgendaTask(current,todayKey,task.id,before,after,undefined,canAdmin(session?.role??null));if(!result)return current;created=result.newId;return result.board}));
      if(!created)notify('Не удалось добавить дело: облако заполнено.');return created;
     }}
     onFocus={(note,task)=>toggleTaskFocus(note.id,task.id)}
