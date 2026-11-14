@@ -388,7 +388,7 @@ export default function Home(){
     <button className={'icon-button organize-toggle'+(organizing?' selected':'')} aria-label={organizing?'Завершить перестановку':'Переставить облака'} aria-pressed={organizing} title="Переставить облака" disabled={!canEdit} onClick={()=>{setOrganizing(!organizing);setPalette(null)}}><ArrowDownUp size={23}/></button>
     <button className={'account-status'+(error?' has-error':'')} title={status} aria-label={'Состояние сохранения: '+status} onClick={()=>notify(status+(offline.offlineReady?" · Готово к открытию без сети":" · Для подготовки офлайна оставьте страницу открытой с интернетом"))}><span>{session?.name?.slice(0,1)||'А'}</span><i/></button>
    </header>
-   <main><h1 className={view==='all'&&!tagView&&!query?'sr-only':'context-heading'}>{title}</h1>
+   <main><h1 className={(view==='all'||view===TODAY_VIEW)&&!tagView&&!query?'sr-only':'context-heading'}>{title}</h1>
     {organizing&&<div className="organize-hint"><GripVertical size={17}/><span>Перетаскивайте за точки</span><button onClick={()=>{setOrganizing(false);setPalette(null)}}>Готово</button></div>}
     {notice&&<div className="error-banner" role="alert">
      <TriangleAlert size={18}/>
