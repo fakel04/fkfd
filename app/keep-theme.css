@@ -165,3 +165,7 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
 .sidebar .profile>div{min-width:0;flex:1}
 .sidebar .profile strong{display:block;line-height:1.4;overflow-wrap:anywhere}
 .sidebar .profile .avatar{flex-shrink:0}
+/* The 32px grip keeps a comfortable touch area but lines up with the checkbox and the first text line. */
+.agenda-row .agenda-drag-handle{margin-top:-5px}
+.agenda-list .swipe-content{min-height:0}
+.agenda-list .swipe-content>.task-row{min-height:32px}

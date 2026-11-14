@@ -83,34 +83,36 @@ export function taskLayoutRect(element:HTMLElement){
 
 /** A real, row-sized gap lets both day headings and neighbors move smoothly. */
 export class GroupedTaskLift{
- root:HTMLElement;row:HTMLElement;id:string;ghost:ReturnType<typeof taskGhost>;slot:HTMLDivElement;
+ root:HTMLElement;row:HTMLElement;source:HTMLElement;id:string;ghost:ReturnType<typeof taskGhost>;slot:HTMLDivElement;
  pointerX:number;pointerY:number;sourceDisplay:string;stopped=false;cleanupLayout:(()=>void)|null=null;
  constructor(root:HTMLElement,row:HTMLElement,x:number,y:number){
-  this.root=root;this.row=row;this.id=row.dataset.agendaTaskId!;this.pointerX=x;this.pointerY=y;this.sourceDisplay=row.style.display;
+  // In the opened «Сегодня» a row sits inside its swipe wrapper; the wrapper is what lives in the day list.
+  this.root=root;this.row=row;this.source=wrap(row);this.id=row.dataset.agendaTaskId!;this.pointerX=x;this.pointerY=y;this.sourceDisplay=this.source.style.display;
   this.ghost=taskGhost(row);this.ghost.element.classList.add('task-lift-ghost');
   this.slot=document.createElement('div');this.slot.className='task-drop-placeholder';this.slot.setAttribute('aria-hidden','true');this.slot.style.height=this.ghost.from.height+'px';
-  row.parentElement!.insertBefore(this.slot,row);row.style.display='none';root.classList.add('task-sorting');
+  this.source.parentElement!.insertBefore(this.slot,this.source);this.source.style.display='none';root.classList.add('task-sorting');
  }
  layout(){return captureTaskLayout(this.root,'[data-agenda-task-id],.agenda-date')}
  move(x:number,y:number,list?:HTMLElement,before:HTMLElement|null=null){
   if(this.stopped)return;
   this.ghost.element.style.transform=`translate3d(${x-this.pointerX}px,${y-this.pointerY}px,0) scale(1.015)`;
   this.slot.style.visibility=list?'visible':'hidden';if(!list)return;
-  let next=this.slot.nextElementSibling;if(next===this.row)next=next.nextElementSibling;
-  if(this.slot.parentElement===list&&next===before)return;
-  const layout=this.layout();list.insertBefore(this.slot,before);
+  const target=before&&wrap(before);
+  let next=this.slot.nextElementSibling;if(next===this.source)next=next.nextElementSibling;
+  if(this.slot.parentElement===list&&next===target)return;
+  const layout=this.layout();list.insertBefore(this.slot,target);
   this.cleanupLayout=animateTaskLayout(layout,this.row,190);
  }
  finish(commit:()=>void,pulse=false){
   if(this.stopped)return()=>{};this.stopped=true;
-  const before=this.layout();this.cleanupLayout?.();this.slot.remove();this.row.style.display=this.sourceDisplay;this.root.classList.remove('task-sorting');
+  const before=this.layout();this.cleanupLayout?.();this.slot.remove();this.source.style.display=this.sourceDisplay;this.root.classList.remove('task-sorting');
   try{commit()}catch(error){this.ghost.element.remove();throw error}
   const destination=[...this.root.querySelectorAll<HTMLElement>('[data-agenda-task-id]')].find(row=>row.dataset.agendaTaskId===this.id);
   const rect=destination?.getBoundingClientRect(),cleanupLayout=animateTaskLayout(before,destination);
   if(!destination||!rect){this.ghost.element.remove();cleanupLayout();return()=>{}}
   return landTaskGhost(this.ghost,destination,cleanupLayout,()=>{},pulse,rect);
  }
- dispose(){this.stopped=true;this.cleanupLayout?.();this.slot.remove();this.ghost.element.remove();this.row.style.display=this.sourceDisplay;this.root.classList.remove('task-sorting')}
+ dispose(){this.stopped=true;this.cleanupLayout?.();this.slot.remove();this.ghost.element.remove();this.source.style.display=this.sourceDisplay;this.root.classList.remove('task-sorting')}
 }
 
 /** Pointer preview only. Task data is committed once on drop, never on hover. */
