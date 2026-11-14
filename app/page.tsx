@@ -60,7 +60,7 @@ export default function Home(){
  function resetEditorTo(note:Note,start:Note|null=note){editorStart.current=structuredClone(start);setConfirmCancel(false);resetEditor(note)}
  function chooseLayout(value:'grid'|'list'){setLayout(value);try{localStorage.setItem('oblaka-board-layout',value)}catch{}}
  const [toast,setToast]=useState(''); const [palette,setPalette]=useState<string|null>(null);
- const [dragVisual,setDragVisual]=useState<{x:number;y:number;label:string}|null>(null); const drag=useRef<Drag|null>(null);const dragLanding=useRef<(()=>void)|null>(null);
+ const [dragVisual,setDragVisual]=useState<{x:number;y:number;label:string}|null>(null); const drag=useRef<Drag|null>(null);const dragEndedAt=useRef(0);const dragLanding=useRef<(()=>void)|null>(null);
  const [taskAction,setTaskAction]=useState<{noteId:string;taskId:string;fromEditor:boolean;mode:'more'|'cloud'}|null>(null);
  const [cloudQuery,setCloudQuery]=useState('');
  const [tagView,setTagView]=useState<string|null>(null);
@@ -113,6 +113,7 @@ export default function Home(){
   const end=(e:PointerEvent)=>{
    const d=drag.current;if(!d||d.pointerId!==e.pointerId)return;drag.current=null;setDragVisual(null);clearTargets();
    if(!d.active)return;
+   dragEndedAt.current=Date.now();
    const el=document.elementFromPoint(e.clientX,e.clientY);
    const targetNote=el?.closest<HTMLElement>('[data-note-id]')?.dataset.noteId;
    const targetTask=el?.closest<HTMLElement>('[data-task-id]')?.dataset.taskId;
@@ -272,15 +273,21 @@ export default function Home(){
  const navItem=(id:string,label:string,icon:React.ReactNode,count?:number)=><button className={'nav-item '+(!tagView&&view===id?'active':'')} onClick={()=>nav(id)}>{icon}<span>{label}</span>{count!==undefined&&<small>{count}</small>}</button>;
  function renderCard(n:Note){
   const display=pinnedFirst(n.tasks.filter(t=>!t.done));const matches=query?display.filter(t=>[t.text,taskDescription(t),parentOf(t)?.title,...taskLabels(t)].join(' ').toLocaleLowerCase().includes(query.toLocaleLowerCase())):[];const queryTasks=matches.length?matches:display;const cardTasks=tagView?queryTasks.filter(t=>hasLabel(taskLabels(t),tagView)):queryTasks;const previewTasks=cardTasks.slice(0,8);
-  return <article className={'note color-'+n.color+(n.deleted?' deleted':'')+(isFocusNote(n)?' focus-note':'')} data-note-id={n.id} key={n.id}>
+  return <article className={'note color-'+n.color+(n.deleted?' deleted':'')+(isFocusNote(n)?' focus-note':'')} data-note-id={n.id} key={n.id} onClick={e=>{
+    // A tap anywhere on the card opens the cloud, including empty task rows and gaps.
+    // Controls with their own action (checkbox, pin, tools, palette, inputs) keep it.
+    if((e.target as HTMLElement).closest('button,a,input,textarea,select,form,.palette,.drag-handle'))return;
+    if(Date.now()-dragEndedAt.current<500)return; // the click that ends a drag
+    if(canRead&&!n.deleted)openEditor(n);
+   }}>
    <div className="note-top"><button className="drag-handle icon-button" aria-label={'Перетащить облако '+n.title} title="Потяните, чтобы переместить. С клавиатуры: ↑ и ↓" onPointerDown={e=>startDrag(e,'note',n)} onKeyDown={e=>keyboardMove(e,n)} disabled={!canEdit}><GripVertical size={18}/></button>{n.example&&<span className="example">ПРИМЕР</span>}{isFocusNote(n)&&<span className="focus-badge">TO-DO</span>}<button className={'pin icon-button '+(n.pinned?'is-pinned':'')} title={n.pinned?'Открепить':'Закрепить'} aria-label={n.pinned?'Открепить '+n.title:'Закрепить '+n.title} onClick={()=>patch(n.id,{pinned:!n.pinned})} disabled={!canEdit||n.deleted||isFocusNote(n)}><Pin size={17} fill={n.pinned?'currentColor':'none'}/></button></div>
    <button className="note-title" onClick={()=>{openEditor(n)}} disabled={!canRead||n.deleted}>{n.title||'Без названия'}</button>
-   {!n.tasks.length&&!isFocusNote(n)&&n.text&&<p className="note-text" onClick={()=>{if(canRead&&!n.deleted){openEditor(n)}}}>{n.text}</p>}
+   {!n.tasks.length&&!isFocusNote(n)&&n.text&&<p className="note-text">{n.text}</p>}
    {!!previewTasks.length&&<div className="tasks">{previewTasks.map(t=><div key={t.id} className="swipe-task"><div className="swipe-content no-task-menu"><div className={'task-row '+(t.done?'done':'')+(parentOf(t)?' subtask':'')} key={t.id} data-task-id={t.id}>
     <button className="task-drag drag-handle" title="Перетащить задачу" aria-label={'Перетащить задачу '+t.text} disabled={!canEdit||n.deleted} onPointerDown={e=>startDrag(e,'task',n,t)} onKeyDown={e=>keyboardMove(e,n,t)}><GripVertical size={14}/></button>
     <TaskCheckbox done={t.done} focused={t.focused} label={t.text} disabled={!canEdit||n.deleted}
      onToggleDone={()=>patch(n.id,{tasks:n.tasks.map(x=>x.id===t.id?{...x,done:!x.done}:x)})}/>
-    <div className="task-copy"><span className="task-label" onClick={()=>{if(canRead&&!n.deleted){openEditor(n)}}}><TaskText text={t.text}/></span>
+    <div className="task-copy"><span className="task-label"><TaskText text={t.text}/></span>
      <TaskDetails task={t} parentTitle={parentOf(t)?.title}/>
     </div>
    </div></div></div>)}</div>}

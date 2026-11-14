@@ -83,3 +83,4 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
    selection stay available inside the opened cloud editor. */
 .keep-layout .note .note-title,.keep-layout .note .note-text,.keep-layout .note .task-row{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .keep-layout .note .note-text,.keep-layout .note .task-label{cursor:pointer}
+.keep-layout .note:not(.deleted){cursor:pointer}
