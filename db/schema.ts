@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, primaryKey, index } from 'drizzle-orm/sqlite-core';
 export const boards = sqliteTable('boards', {
   userId: text('user_id').primaryKey(),
   data: text('data').notNull(),
@@ -41,3 +41,11 @@ export const cloudAccess = sqliteTable('cloud_access', {
   noteId: text('note_id').notNull(),
   createdAt: text('created_at').notNull(),
 }, table=>[primaryKey({columns:[table.memberEmail,table.noteId]})]);
+
+/** Comments and material metadata stay outside the single-row board payload. */
+export const taskMaterials=sqliteTable('task_materials',{
+ id:text('id').primaryKey(),boardId:text('board_id').notNull(),taskId:text('task_id').notNull(),kind:text('kind').notNull(),
+ text:text('text').notNull().default(''),title:text('title').notNull().default(''),source:text('source').notNull().default('other'),sourceUrl:text('source_url').notNull().default(''),url:text('url').notNull().default(''),
+ fileKey:text('file_key'),fileName:text('file_name'),fileSize:integer('file_size'),authorId:text('author_id').notNull(),authorName:text('author_name').notNull(),
+ createdAt:text('created_at').notNull(),updatedAt:text('updated_at').notNull(),revision:integer('revision').notNull().default(1),
+},table=>[index('task_materials_task').on(table.boardId,table.taskId,table.createdAt)]);
