@@ -29,7 +29,7 @@ import { useState, useEffect, useRef, useMemo, type FormEvent } from 'react';
 import { AlignLeft, CornerDownRight, CalendarDays, ArrowDownUp, Rows2, ArrowLeft, Cloud, Search, Plus, LayoutGrid, List, Pin, Archive, Trash2, X, Check, GripVertical, ArrowUp, ArrowDown, Palette, Menu, Tag, CheckCheck, Download, RotateCcw, StickyNote, CircleHelp, CloudCheck, ArrowUpRight } from 'lucide-react';
 
 type TaskTarget={noteId:string;taskId:string;fromEditor:boolean};
-type Drag={kind:'note'|'task';noteId:string;taskId?:string;x:number;y:number;active:boolean;label:string;pointerId:number;lift?:TaskLift};
+type Drag={kind:'note'|'task';noteId:string;taskId?:string;x:number;y:number;active:boolean;label:string;pointerId:number;lift?:TaskLift;card?:HTMLElement;color?:string};
 const colors=['white','lavender','peach','sage','blue','yellow'];
 const colorNames=['Бумага','Лаванда','Персик','Шалфей','Небо','Ваниль'];
 const uid=()=>crypto.randomUUID();
@@ -60,7 +60,7 @@ export default function Home(){
  function resetEditorTo(note:Note,start:Note|null=note){editorStart.current=structuredClone(start);setConfirmCancel(false);resetEditor(note)}
  function chooseLayout(value:'grid'|'list'){setLayout(value);try{localStorage.setItem('oblaka-board-layout',value)}catch{}}
  const [toast,setToast]=useState(''); const [palette,setPalette]=useState<string|null>(null);
- const [dragVisual,setDragVisual]=useState<{x:number;y:number;label:string}|null>(null); const drag=useRef<Drag|null>(null);const dragEndedAt=useRef(0);const dragLanding=useRef<(()=>void)|null>(null);
+ const [dragVisual,setDragVisual]=useState<{x:number;y:number;label:string;color?:string}|null>(null); const drag=useRef<Drag|null>(null);const dragEndedAt=useRef(0);const dragLanding=useRef<(()=>void)|null>(null);
  const [taskAction,setTaskAction]=useState<{noteId:string;taskId:string;fromEditor:boolean;mode:'more'|'cloud'}|null>(null);
  const [cloudQuery,setCloudQuery]=useState('');
  const [tagView,setTagView]=useState<string|null>(null);
@@ -97,6 +97,7 @@ export default function Home(){
    const d=drag.current;if(!d||d.pointerId!==e.pointerId)return;
    if(!d.active&&Math.hypot(e.clientX-d.x,e.clientY-d.y)>6){
     d.active=true;
+    if(d.kind==='note'){d.card=[...document.querySelectorAll<HTMLElement>('[data-note-id]')].find(note=>note.dataset.noteId===d.noteId);d.card?.classList.add('drag-source');}
     if(d.kind==='task'){
      const card=[...document.querySelectorAll<HTMLElement>('[data-note-id]')].find(note=>note.dataset.noteId===d.noteId);
      const row=[...card?.querySelectorAll<HTMLElement>('[data-task-id]')??[]].find(task=>task.dataset.taskId===d.taskId);
@@ -105,13 +106,13 @@ export default function Home(){
     }
    }
    if(!d.active)return;e.preventDefault();clearTargets();
-   if(d.lift)d.lift.move(e.clientX,e.clientY);else setDragVisual({x:e.clientX,y:e.clientY,label:d.label});
+   if(d.lift)d.lift.move(e.clientX,e.clientY);else setDragVisual({x:e.clientX,y:e.clientY,label:d.label,color:d.color});
    const target=document.elementFromPoint(e.clientX,e.clientY)?.closest<HTMLElement>('[data-note-id]');
    if(target&&(d.kind==='note'||target.dataset.noteId!==d.noteId))target.classList.add('drop-target');
    if(e.clientY<100)window.scrollBy(0,-12);if(e.clientY>innerHeight-70)window.scrollBy(0,12);
   };
   const end=(e:PointerEvent)=>{
-   const d=drag.current;if(!d||d.pointerId!==e.pointerId)return;drag.current=null;setDragVisual(null);clearTargets();
+   const d=drag.current;if(!d||d.pointerId!==e.pointerId)return;drag.current=null;setDragVisual(null);clearTargets();d.card?.classList.remove('drag-source');
    if(!d.active)return;
    dragEndedAt.current=Date.now();
    const el=document.elementFromPoint(e.clientX,e.clientY);
@@ -125,7 +126,7 @@ export default function Home(){
     }
     const base=d.kind==='task'&&targetNote===FOCUS_NOTE_ID&&d.noteId!==FOCUS_NOTE_ID?moveToFocus(b,d.noteId,d.taskId!):b;
     const notes=structuredClone(base.notes);const source=notes.find(n=>n.id===(base!==b?FOCUS_NOTE_ID:d.noteId));const target=notes.find(n=>n.id===targetNote);if(!source||!target)return b;
-    if(d.kind==='note'){if(source.id===target.id)return b;notes.splice(notes.indexOf(source),1);source.pinned=isFocusNote(source)||target.pinned;notes.splice(notes.indexOf(target),0,source);}
+    if(d.kind==='note'){if(source.id===target.id)return b;const down=notes.indexOf(source)<notes.indexOf(target);notes.splice(notes.indexOf(source),1);source.pinned=isFocusNote(source)||target.pinned;notes.splice(notes.indexOf(target)+(down?1:0),0,source);}
     else{if(d.taskId===targetTask)return b;const index=source.tasks.findIndex(t=>t.id===d.taskId);if(index<0)return b;const [task]=source.tasks.splice(index,1);if(isFocusNote(source)&&!isFocusNote(target)){delete task.focused;delete task.origin;}const ti=target.tasks.findIndex(t=>t.id===targetTask);const rect=el?.closest<HTMLElement>('[data-task-id]')?.getBoundingClientRect();const after=rect&&e.clientY>=rect.top+rect.height/2;target.tasks.splice(ti<0?target.tasks.length:ti+(after?1:0),0,task);}
     return {...b,notes};
    }));
@@ -134,9 +135,9 @@ export default function Home(){
     const row=[...card?.querySelectorAll<HTMLElement>('[data-task-id]')??[]].find(task=>task.dataset.taskId===d.taskId);
     return row?.closest<HTMLElement>('.swipe-task')??card?.querySelector<HTMLElement>('.note-title')??undefined;
    });
-   else{const before=captureTaskLayout(document.querySelector('.main-shell')!);commit();dragLanding.current=animateTaskLayout(before);}
+   else{const before=captureTaskLayout(document.querySelector('.main-shell')!);commit();dragLanding.current=animateTaskLayout(before,undefined,d.kind==='note'?420:300);}
   };
-  const cancel=()=>{const d=drag.current;drag.current=null;dragLanding.current=d?.lift?.finish()??null;setDragVisual(null);clearTargets()};
+  const cancel=()=>{const d=drag.current;d?.card?.classList.remove('drag-source');drag.current=null;dragLanding.current=d?.lift?.finish()??null;setDragVisual(null);clearTargets()};
   const key=(e:KeyboardEvent)=>{if(e.key==='Escape'&&drag.current){e.preventDefault();cancel();}};
   window.addEventListener('pointermove',move,{passive:false});window.addEventListener('pointerup',end);window.addEventListener('pointercancel',cancel);window.addEventListener('blur',cancel);window.addEventListener('keydown',key);
   return()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',end);window.removeEventListener('pointercancel',cancel);window.removeEventListener('blur',cancel);window.removeEventListener('keydown',key);drag.current?.lift?.dispose();dragLanding.current?.();};
@@ -144,7 +145,7 @@ export default function Home(){
  function startDrag(e:React.PointerEvent,kind:'note'|'task',note:Note,task?:Task){
   if(e.button!==0||!e.isPrimary||!writeAllowed.current)return;e.preventDefault();e.stopPropagation();dragLanding.current?.();dragLanding.current=null;
   document.dispatchEvent(new CustomEvent('task-swipe-open',{detail:null}));
-  drag.current={kind,noteId:note.id,taskId:task?.id,x:e.clientX,y:e.clientY,pointerId:e.pointerId,active:false,label:task?.text||note.title||'Облако'};
+  drag.current={kind,noteId:note.id,taskId:task?.id,x:e.clientX,y:e.clientY,pointerId:e.pointerId,active:false,label:task?.text||note.title||'Облако',color:kind==='note'?note.color:undefined};
  }
  function keyboardMove(e:React.KeyboardEvent,n:Note,t?:Task){if(e.key!=='ArrowUp'&&e.key!=='ArrowDown')return;e.preventDefault();const dir=e.key==='ArrowUp'?-1:1;
   const before=captureTaskLayout(document.querySelector('.main-shell')!);
@@ -327,7 +328,7 @@ export default function Home(){
     <button className="icon-button mobile-menu" aria-label="Открыть меню" onClick={()=>setSidebar(true)}><Menu size={25}/></button>
     <div className="search"><Search size={21}/><input placeholder="Искать в заметках" aria-label="Поиск по облакам" value={query} onChange={e=>setQuery(e.target.value)}/>{query&&<button className="icon-button" aria-label="Очистить поиск" onClick={()=>setQuery('')}><X size={20}/></button>}</div>
     <button className="icon-button layout-toggle" aria-label={layout==='grid'?'Показать списком':'Показать сеткой'} title={layout==='grid'?'Список':'Сетка'} onClick={()=>chooseLayout(layout==='grid'?'list':'grid')}>{layout==='grid'?<Rows2 size={23}/>:<LayoutGrid size={23}/>}</button>
-    <button className={'icon-button organize-toggle'+(organizing?' selected':'')} aria-label={organizing?'Завершить перестановку':'Переставить облака'} aria-pressed={organizing} title="Переставить облака" disabled={!canEdit} onClick={()=>{setOrganizing(!organizing);setPalette(null);if(!organizing)notify('Тяните за точки, чтобы перемещать облака и задачи')}}><ArrowDownUp size={23}/></button>
+    <button className={'icon-button organize-toggle'+(organizing?' selected':'')} aria-label={organizing?'Завершить перестановку':'Переставить облака'} aria-pressed={organizing} title="Переставить облака" disabled={!canEdit} onClick={()=>{setOrganizing(!organizing);setPalette(null)}}><ArrowDownUp size={23}/></button>
     <button className={'account-status'+(error?' has-error':'')} title={status} aria-label={'Состояние сохранения: '+status} onClick={()=>notify(status+(offline.offlineReady?" · Готово к открытию без сети":" · Для подготовки офлайна оставьте страницу открытой с интернетом"))}><span>{session?.name?.slice(0,1)||'А'}</span><i/></button>
    </header>
    <main><h1 className={view==='all'&&!tagView&&!query?'sr-only':'context-heading'}>{title}</h1>
@@ -350,7 +351,7 @@ export default function Home(){
 
    </main>
   </div>
-  {dragVisual&&<div className="drag-ghost" style={{left:dragVisual.x+12,top:dragVisual.y+12}}><GripVertical size={16}/>{dragVisual.label}</div>}
+  {dragVisual&&<div className={'drag-ghost'+(dragVisual.color?' color-'+dragVisual.color:'')} style={{left:dragVisual.x+12,top:dragVisual.y+12}}><GripVertical size={16}/>{dragVisual.label}</div>}
   {toast&&<div className="toast" role="status"><Check size={17}/>{toast}</div>}
   {editor&&<Modal focusPanel label={!canEdit?'Просмотр облака':isNew?'Новое облако':'Редактирование облака'} onClose={saveEditor}>
    <div ref={editorElement} className={'editor color-'+editor.color+(!canEdit?' readonly-editor':'')} onPointerDownCapture={event=>{if((event.target as HTMLElement).matches('input,textarea'))editorHistory.breakGroup()}} onKeyDownCapture={event=>{
