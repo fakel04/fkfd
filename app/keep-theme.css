@@ -169,3 +169,15 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
 .agenda-row .agenda-drag-handle{margin-top:-5px}
 .agenda-list .swipe-content{min-height:0}
 .agenda-list .swipe-content>.task-row{min-height:32px}
+
+/* Cloud header as in Keep: round back button, the cloud name, round pin on the right. */
+.editor .editor-top{display:flex;align-items:center;gap:12px;padding:8px 0 10px}
+.editor-top>span{display:none}
+.editor-round{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;padding:0;color:#3c4043;background:#ffffff8c;border:1px solid #0000000d;box-shadow:0 1px 3px #3c404314;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.editor-round:active{background:#ffffffc0}
+.editor-round:disabled{opacity:.5}
+.editor-round.editor-pin{margin-left:auto}
+.editor-round.editor-pin[aria-pressed=true]{color:#202124}
+.editor-top .editor-title,.editor-top input.editor-title{flex:1;min-width:0;margin:0;padding:0;font-size:22px;line-height:1.3;font-weight:500;color:#303438;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
+.editor-top h1.editor-title{font-family:inherit}
+.today-editor .today-full{padding-top:2px}
