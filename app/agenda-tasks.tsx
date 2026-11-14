@@ -130,7 +130,7 @@ export function AgendaTasks(props:Props){
     {!items.length&&<div className="agenda-empty-drop">Перенести на этот день</div>}
     <div className="tasks">{items.map(({note,task,time,source})=>{
      const row=<div className="task-row agenda-row" key={task.id} data-agenda-task-id={task.id}>
-     {!props.readOnly&&<button type="button" className="agenda-drag-handle drag-handle" aria-label={'Переместить дело '+(task.text||'Без названия')} title="Перетащить дело. С клавиатуры: ↑ и ↓" onPointerDown={event=>start(event,task.id)} onKeyDown={event=>keyboard(event,task.id)} onClick={event=>event.stopPropagation()}><GripVertical size={18}/></button>}
+     {props.full&&!props.readOnly&&<button type="button" className="agenda-drag-handle drag-handle" aria-label={'Переместить дело '+(task.text||'Без названия')} title="Перетащить дело. С клавиатуры: ↑ и ↓" onPointerDown={event=>start(event,task.id)} onKeyDown={event=>keyboard(event,task.id)} onClick={event=>event.stopPropagation()}><GripVertical size={18}/></button>}
      <TaskCheckbox done={task.done} label={task.text||'Без названия'} disabled={props.readOnly} onToggleDone={()=>props.onToggle(note,task)}/>
      {props.full?<div className="agenda-task agenda-task-edit"><AgendaText task={task} readOnly={props.readOnly} onCommit={text=>props.onEditText?.(note,task,text)} onSplit={props.onSplit&&((before,after)=>{
        const id=props.onSplit!(note,task,before,after);if(!id)return;
