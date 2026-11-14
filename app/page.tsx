@@ -306,7 +306,12 @@ export default function Home(){
    <AgendaTasks groups={agenda} today={todayKey} full={full} readOnly={!canEdit}
     onMove={(id,date,beforeId)=>{if(!writeAllowed.current||conflict)return;dragEndedAt.current=Date.now();update(current=>moveAgendaTask(current,todayKey,id,date,beforeId));}}
     onToggle={(note,task)=>patch(note.id,{tasks:source(note.id,note).tasks.map(item=>item.id===task.id?{...item,done:!item.done}:item)})}
-    onOpen={note=>openEditor(source(note.id,note))}/>
+    onOpen={note=>openEditor(source(note.id,note))}
+    onPin={(note,task)=>patch(note.id,{tasks:source(note.id,note).tasks.map(item=>item.id===task.id?{...item,pinned:!item.pinned}:item)})}
+    onEditText={(note,task,text)=>patch(note.id,{tasks:source(note.id,note).tasks.map(item=>item.id===task.id?{...item,text}:item)})}
+    onFocus={(note,task)=>toggleTaskFocus(note.id,task.id)}
+    onCloud={(note,task)=>openTaskActions(note.id,task.id,false,'cloud')}
+    onMore={(note,task)=>openTaskActions(note.id,task.id,false,'more')}/>
    {!full&&total>shown&&<button className="show-all-tasks" aria-label="Показать все дела со сроком" title={'Ещё дел: '+(total-shown)}><span aria-hidden="true">…</span></button>}
   </article>;
  }

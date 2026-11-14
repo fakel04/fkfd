@@ -3,6 +3,9 @@ import {useEffect,useRef,useState,type PointerEvent as ReactPointerEvent,type Ke
 import {flushSync} from 'react-dom';
 import {GripVertical} from 'lucide-react';
 import {TaskCheckbox} from './task-checkbox';
+import {TaskInput} from './task-input';
+import {SwipeTask} from './swipe-task';
+import {isFocusNote} from './board-model';
 import {TaskText} from './task-details';
 import {agendaDays,dateLabel,type AgendaGroup} from './today-agenda';
 import {GroupedTaskLift,taskLayoutRect,captureTaskLayout,animateTaskLayout} from './task-motion';
@@ -10,7 +13,20 @@ import type {Note,Task} from './board-model';
 
 type Target={date:string;beforeId:string|null};
 type Gesture={id:string;pointerId:number;startX:number;startY:number;x:number;y:number;handle:HTMLButtonElement;row:HTMLElement;active:boolean;lift?:GroupedTaskLift;target:Target|null};
-type Props={groups:AgendaGroup[];today:string;full:boolean;readOnly:boolean;onMove:(id:string,date:string,beforeId:string|null)=>void;onToggle:(note:Note,task:Task)=>void;onOpen:(note:Note)=>void};
+type TaskAction=(note:Note,task:Task)=>void;
+type Props={groups:AgendaGroup[];today:string;full:boolean;readOnly:boolean;onMove:(id:string,date:string,beforeId:string|null)=>void;onToggle:TaskAction;onOpen:(note:Note)=>void;
+ // Same actions as in an ordinary cloud, applied to the task in its own cloud.
+ onPin?:TaskAction;onFocus?:TaskAction;onCloud?:TaskAction;onMore?:TaskAction;onEditText?:(note:Note,task:Task,text:string)=>void};
+
+/** Inline text editing; the change is saved to the task's cloud when editing ends. */
+function AgendaText({task,readOnly,onCommit}:{task:Task;readOnly:boolean;onCommit:(text:string)=>void}){
+ const [text,setText]=useState(task.text);const editing=useRef(false);
+ useEffect(()=>{if(!editing.current)setText(task.text)},[task.text]);
+ const commit=()=>{editing.current=false;const next=text.replace(/\s*\n\s*/g,' ');if(next!==task.text)onCommit(next)};
+ return <TaskInput readOnly={readOnly} aria-label={'Дело: '+(task.text||'Без названия')} value={text} placeholder="Без названия"
+  onFocus={()=>{editing.current=true}} onChange={event=>setText(event.target.value)} onBlur={commit}
+  onTaskBreak={()=>{(document.activeElement as HTMLElement|null)?.blur()}} onTaskLines={value=>setText(value.replace(/\s*\n\s*/g,' '))}/>;
+}
 
 export function AgendaTasks(props:Props){
  const root=useRef<HTMLDivElement>(null),current=useRef(props);current.current=props;
@@ -103,11 +119,15 @@ export function AgendaTasks(props:Props){
    return <section className={'agenda-group'+(day.overdue?' overdue':'')+(target?.date===day.key?' agenda-drop-day':'')} data-agenda-day={day.key} key={day.key}>
     <div className="agenda-date"><span>{day.label}</span>{day.hint&&<small>{day.hint}</small>}</div>
     {!items.length&&<div className="agenda-empty-drop">Перенести на этот день</div>}
-    <div className="tasks">{items.map(({note,task,time,source})=><div className="task-row agenda-row" key={task.id} data-agenda-task-id={task.id}>
+    <div className="tasks">{items.map(({note,task,time,source})=>{
+     const row=<div className="task-row agenda-row" key={task.id} data-agenda-task-id={task.id}>
      {!props.readOnly&&<button type="button" className="agenda-drag-handle drag-handle" aria-label={'Переместить дело '+(task.text||'Без названия')} title="Перетащить дело. С клавиатуры: ↑ и ↓" onPointerDown={event=>start(event,task.id)} onKeyDown={event=>keyboard(event,task.id)} onClick={event=>event.stopPropagation()}><GripVertical size={18}/></button>}
      <TaskCheckbox done={task.done} label={task.text||'Без названия'} disabled={props.readOnly} onToggleDone={()=>props.onToggle(note,task)}/>
-     {props.full?<button type="button" className="agenda-task" onClick={()=>props.onOpen(note)}><span className="task-label"><TaskText text={task.text||'Без названия'}/></span><small>{time&&<b>{time} · </b>}{source}</small></button>:<span className="agenda-task"><span className="task-label"><TaskText text={task.text||'Без названия'}/></span><small>{time&&<b>{time} · </b>}{source}</small></span>}
-    </div>)}</div>
+     {props.full?<div className="agenda-task agenda-task-edit"><AgendaText task={task} readOnly={props.readOnly} onCommit={text=>props.onEditText?.(note,task,text)}/><button type="button" className="agenda-source" onClick={()=>props.onOpen(note)} title="Открыть облако">{time&&<b>{time} · </b>}{source} ↗</button></div>:<span className="agenda-task"><span className="task-label"><TaskText text={task.text||'Без названия'}/></span><small>{time&&<b>{time} · </b>}{source}</small></span>}
+    </div>;
+     return props.full?<SwipeTask key={task.id} label={task.text||'Без названия'} pinned={task.pinned} focused={isFocusNote(note)} disabled={props.readOnly} showMenuButton={false}
+      onPin={()=>props.onPin?.(note,task)} onFocus={()=>props.onFocus?.(note,task)} onCloud={()=>props.onCloud?.(note,task)} onMore={()=>props.onMore?.(note,task)}>{row}</SwipeTask>:row;
+    })}</div>
    </section>;
   })}
   <span className="sr-only" role="status" aria-live="polite">{announcement}</span>

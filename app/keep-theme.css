@@ -146,3 +146,9 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
 .agenda-drop-day{background:#4262820a}.agenda-empty-drop{font-size:12px;color:#70757a;padding:12px 5px;min-height:40px;border:1px dashed #9aa0a6;border-radius:5px}
 .task-drop-placeholder{flex:none;min-height:1px;width:100%;pointer-events:none}.agenda-group:has(.task-drop-placeholder)>.agenda-empty-drop{display:none}
 .agenda-sorting{user-select:none;-webkit-user-select:none}
+
+/* «Сегодня» opened: tasks are edited in place like in any cloud. */
+.agenda-task-edit{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.agenda-task-edit .task-input{width:100%;font-size:16px;line-height:1.4;color:#3c4043;background:transparent;border:0;outline:0;resize:none;padding:0}
+.agenda-source{align-self:flex-start;padding:0;background:none;font-size:12px;line-height:1.3;color:#5f6368;text-align:left}
+.agenda-source b{font-weight:600}
