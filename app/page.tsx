@@ -31,7 +31,7 @@ import { AgendaTasks } from './agenda-tasks';
 import { attachPullStretch } from './pull-stretch';
 import { FitTasks } from './fit-tasks';
 import { expandTaskLines, prepareTaskList } from './task-list-edit';
-import { boardLabels, preserveLabelCatalog, hasLabel, noteHasLabel, taskLabels, taskDueDate, taskDescription, FOCUS_NOTE_ID, pinnedFirst, moveTaskToCloud, ensureFocusBoard, isFocusNote, moveToFocus, returnFromFocus, sourceTitle, type Board, type Note, type Task, type TaskParent } from './board-model';
+import { boardLabels, preserveLabelCatalog, hasLabel, noteHasLabel, taskLabels, taskDueDate, taskDescription, FOCUS_NOTE_ID, pinnedFirst, moveTaskToCloud, ensureFocusBoard, isFocusNote, moveToFocus, returnFromFocus, sourceTitle, placePinned, type Board, type Note, type Task, type TaskParent } from './board-model';
 import { useState, useEffect, useRef, useMemo, useCallback, type FormEvent } from 'react';
 import { AlignLeft, ChevronLeft, CornerDownRight, CalendarDays, Paperclip, ArrowDownUp, Rows2, ArrowLeft, Cloud, Search, Plus, LayoutGrid, List, Pin, Archive, Trash2, X, Check, GripVertical, ArrowUp, ArrowDown, Palette, Menu, Tag, CheckCheck, Download, RotateCcw, StickyNote, CircleHelp, CloudCheck, ArrowUpRight } from 'lucide-react';
 
@@ -355,7 +355,7 @@ export default function Home(){
     if(Date.now()-dragEndedAt.current<500)return; // the click that ends a drag
     if(canRead&&!n.deleted)openEditor(n);
    }}>
-   <div className="note-top"><button className="drag-handle icon-button" aria-label={'Перетащить облако '+n.title} title="Потяните, чтобы переместить. С клавиатуры: ↑ и ↓" onPointerDown={e=>startDrag(e,'note',n)} onKeyDown={e=>keyboardMove(e,n)} disabled={!canEdit}><GripVertical size={18}/></button>{n.example&&<span className="example">ПРИМЕР</span>}{isFocusNote(n)&&<span className="focus-badge">TO-DO</span>}<button className={'pin icon-button '+(n.pinned?'is-pinned':'')} title={n.pinned?'Открепить':'Закрепить'} aria-label={n.pinned?'Открепить '+n.title:'Закрепить '+n.title} onClick={()=>patch(n.id,{pinned:!n.pinned})} disabled={!canEdit||n.deleted||isFocusNote(n)}><Pin size={17} fill={n.pinned?'currentColor':'none'}/></button></div>
+   <div className="note-top"><button className="drag-handle icon-button" aria-label={'Перетащить облако '+n.title} title="Потяните, чтобы переместить. С клавиатуры: ↑ и ↓" onPointerDown={e=>startDrag(e,'note',n)} onKeyDown={e=>keyboardMove(e,n)} disabled={!canEdit}><GripVertical size={18}/></button>{n.example&&<span className="example">ПРИМЕР</span>}{isFocusNote(n)&&<span className="focus-badge">TO-DO</span>}<button className={'pin icon-button '+(n.pinned?'is-pinned':'')} title={n.pinned?'Открепить':'Закрепить'} aria-label={n.pinned?'Открепить '+n.title:'Закрепить '+n.title} onClick={()=>update(b=>{const notes=b.notes.map(x=>x.id===n.id?{...x,pinned:!x.pinned}:x);return {...b,notes:n.pinned?notes:placePinned(notes,n.id)}})} disabled={!canEdit||n.deleted||isFocusNote(n)}><Pin size={17} fill={n.pinned?'currentColor':'none'}/></button></div>
    <button className="note-title" onClick={()=>{openEditor(n)}} disabled={!canRead||n.deleted}>{n.title||'Без названия'}</button>
    {!n.tasks.length&&!isFocusNote(n)&&n.text&&<p className="note-text">{n.text}</p>}
    {!!previewTasks.length&&<FitTasks total={cardTasks.length} watch={layout+'|'+cardTasks.length+'|'+previewTasks.map(t=>t.id+':'+t.text+':'+(isFocusNote(n)&&t.origin?sourceTitle(board,t):'')).join('|')}

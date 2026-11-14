@@ -94,3 +94,16 @@ export function moveTaskToCloud(board: Board, fromId: string, taskId: string, to
  const {focused:_focused,origin:_origin,...moved}=task;
  return {...board,notes:board.notes.map(n=>n.id===fromId?{...n,tasks:n.tasks.filter(t=>t.id!==taskId)}:n.id===toId?{...n,tasks:[...n.tasks,moved]}:n)};
 }
+
+/**
+ * A cloud that gets pinned goes to the top of the pinned clouds, right after «Задачи»
+ * (and «Сегодня», which the board shows right after «Задачи»).
+ */
+export function placePinned(notes:Note[],id:string):Note[]{
+ const note=notes.find(n=>n.id===id);if(!note||!note.pinned||isFocusNote(note))return notes;
+ const rest=notes.filter(n=>n.id!==id);
+ const focus=rest.findIndex(n=>isFocusNote(n)&&n.pinned&&!n.deleted&&!n.archived);
+ const firstPinned=rest.findIndex(n=>n.pinned&&!isFocusNote(n));
+ const at=focus>=0?focus+1:firstPinned>=0?firstPinned:0;
+ return [...rest.slice(0,at),note,...rest.slice(at)];
+}
