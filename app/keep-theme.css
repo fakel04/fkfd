@@ -181,3 +181,11 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
 .editor-top .editor-title,.editor-top input.editor-title{flex:1;min-width:0;margin:0;padding:0;font-size:22px;line-height:1.3;font-weight:500;color:#303438;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
 .editor-top h1.editor-title{font-family:inherit}
 .today-editor .today-full{padding-top:2px}
+
+/* An open cloud is opaque edge to edge: iOS tints and blurs the status-bar area from the
+   topmost element, and a transparent backdrop let the white board bar show through. The
+   panel does not rubber-band either, so pulling down shows only the cloud colour. */
+@media(max-width:760px){
+ .modal-overlay:has(.editor){background:var(--open-cloud-bg,#fff);overscroll-behavior:none}
+ .modal-panel:has(.editor){background:var(--open-cloud-bg,#fff);overscroll-behavior:none}
+}

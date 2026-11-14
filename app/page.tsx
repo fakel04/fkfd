@@ -76,8 +76,10 @@ export default function Home(){
    if(!color||color==='rgba(0, 0, 0, 0)')return;
    if(meta)meta.content=color;
    document.documentElement.style.backgroundColor=color;
+   // The full-screen panel and its backdrop share the colour (see .modal-overlay:has(.editor)).
+   document.documentElement.style.setProperty('--open-cloud-bg',color);
   });
-  return()=>{cancelAnimationFrame(frame);if(meta&&previousMeta!==undefined)meta.content=previousMeta;document.documentElement.style.backgroundColor=previousBackground};
+  return()=>{cancelAnimationFrame(frame);if(meta&&previousMeta!==undefined)meta.content=previousMeta;document.documentElement.style.backgroundColor=previousBackground;document.documentElement.style.removeProperty('--open-cloud-bg')};
  },[editorColor]);
  function chooseLayout(value:'grid'|'list'){setLayout(value);try{localStorage.setItem('oblaka-board-layout',value)}catch{}}
  const [toast,setToast]=useState(''); const [palette,setPalette]=useState<string|null>(null);
