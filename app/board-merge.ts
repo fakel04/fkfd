@@ -21,7 +21,7 @@ function flatten(board:Board):Flat{
  }
  return {entities,orders};
 }
-const fields:Record<string,string>={text:'Текст',title:'Название',done:'Выполнение',description:'Описание',dueDate:'Срок',labels:'Теги',parent:'Головная задача',pinned:'Закрепление',location:'Облако',deleted:'Удаление',archived:'Архив',color:'Цвет',category:'Тема',entity:'Задача или облако',order:'Порядок',children:'Содержимое облака'};
+const fields:Record<string,string>={text:'Текст',title:'Название',done:'Выполнение',description:'Описание',gptUrl:'Ссылка на GPT',claudeUrl:'Ссылка на Claude',dueDate:'Срок',labels:'Теги',parent:'Головная задача',pinned:'Закрепление',location:'Облако',deleted:'Удаление',archived:'Архив',color:'Цвет',category:'Тема',entity:'Задача или облако',order:'Порядок',children:'Содержимое облака'};
 function label(entity:Entity|undefined){return String(entity?.title||entity?.text||'Без названия');}
 function setMerge(base:unknown[],local:unknown[],remote:unknown[]){return [...remote.filter(x=>!base.some(b=>equal(b,x))||local.some(l=>equal(l,x))),...local.filter(x=>!base.some(b=>equal(b,x))&&!remote.some(r=>equal(r,x)))];}
 function reorder(reference:string[],ids:string[]){return reference.filter(id=>ids.includes(id));}

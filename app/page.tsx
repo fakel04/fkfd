@@ -19,6 +19,7 @@ import { EditorTaskList } from './editor-task-list';
 import { TagPicker } from './tag-picker';
 import { DuePicker } from './due-picker';
 import { TaskDescriptionEditor } from './task-description-editor';
+import { TaskAiLinksEditor } from './task-ai-links-editor';
 import { TaskParentPicker } from './task-parent-picker';
 import { createParentResolver, canChooseParent } from './task-relations';
 import { TaskCheckbox } from './task-checkbox';
@@ -382,7 +383,7 @@ export default function Home(){
   {removeExamples&&<Modal label="Убрать примеры" onClose={()=>setRemoveExamples(false)}><div className="small-modal"><h2>Начать с чистого листа?</h2><p>Все облака с меткой «Пример» переместятся в корзину. Их можно будет вернуть.</p><div className="modal-actions"><button className="text-button" onClick={()=>setRemoveExamples(false)}>Оставить</button><button className="primary" onClick={()=>{update(b=>({...b,notes:b.notes.map(n=>n.example?{...n,deleted:true}:n)}));setRemoveExamples(false)}}>Убрать примеры</button></div></div></Modal>}
   {taskAction&&actionTask&&canEdit&&<Modal label={taskAction.mode==='cloud'?'Перенести в облако':'Действия с задачей'} onClose={()=>setTaskAction(null)}><div className="small-modal task-actions-modal">
    <h2>{taskAction.mode==='cloud'?'В облако':'Действия с задачей'}</h2><p>{actionTask.text}</p>
-   {taskAction.mode==='more'?<div className="task-action-options">
+   {taskAction.mode==='more'?<><TaskAiLinksEditor key={actionTask.id} task={actionTask} onApply={changes=>applyTaskMetadata(taskAction,changes)}/><div className="task-action-options">
     <button onClick={()=>{setTagPicker({noteId:taskAction.noteId,taskId:taskAction.taskId,fromEditor:taskAction.fromEditor});setTaskAction(null)}}><Tag size={18}/>Теги</button>
     <button onClick={()=>{setDuePicker({noteId:taskAction.noteId,taskId:taskAction.taskId,fromEditor:taskAction.fromEditor});setTaskAction(null)}}><CalendarDays size={18}/>Срок</button>
     <button onClick={()=>{setDescriptionEditor({noteId:taskAction.noteId,taskId:taskAction.taskId,fromEditor:taskAction.fromEditor});setTaskAction(null)}}><AlignLeft size={18}/>Описание</button>
@@ -391,7 +392,7 @@ export default function Home(){
     {taskAction.noteId!==FOCUS_NOTE_ID&&<button onClick={()=>moveActionTask(FOCUS_NOTE_ID)}><CheckCheck size={18}/>В задачи</button>}
     <button onClick={()=>openTaskActions(taskAction.noteId,taskAction.taskId,taskAction.fromEditor,'cloud')}><Cloud size={18}/>В облако</button>
     <button onClick={()=>changeActionTask({done:!actionTask.done})}><Check size={18}/>{actionTask.done?'Вернуть в активные':'Выполнить'}</button>
-   </div>:<>
+   </div></>:<>
     {taskAction.noteId===FOCUS_NOTE_ID&&actionTask.origin&&<button className="return-origin" onClick={()=>moveActionTask('__origin__')}><RotateCcw size={18}/>Вернуть в «{sourceTitle(board,actionTask)}»</button>}
     <input autoFocus placeholder="Найти облако" aria-label="Найти облако для задачи" value={cloudQuery} onChange={e=>setCloudQuery(e.target.value)}/>
     <div className="cloud-choice-list">{board.notes.filter(n=>!n.deleted&&!n.archived&&!isFocusNote(n)&&n.id!==taskAction.noteId&&n.title.toLocaleLowerCase().includes(cloudQuery.toLocaleLowerCase())).map(n=><button key={n.id} onClick={()=>moveActionTask(n.id)}><span className={'cloud-choice-dot color-'+n.color}/>{n.title||'Без названия'}</button>)}</div>
