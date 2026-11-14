@@ -1,0 +1,9 @@
+import {AccessError} from './access-store.ts';
+const encode=(value:Uint8Array)=>btoa(String.fromCharCode(...value));
+const decode=(value:string)=>Uint8Array.from(atob(value),char=>char.charCodeAt(0));
+export async function calendarHash(value:string){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('')}
+async function key(secret:string){let bytes:Uint8Array<ArrayBuffer>;try{bytes=decode(secret)}catch{throw new AccessError('Проверьте ключ шифрования календаря.',503)}if(bytes.length!==32)throw new AccessError('Проверьте ключ шифрования календаря.',503);return crypto.subtle.importKey('raw',bytes,'AES-GCM',false,['encrypt','decrypt'])}
+export async function sealCalendar(value:string,secret:string,context:string){const iv=crypto.getRandomValues(new Uint8Array(12));const data=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode(context)},await key(secret),new TextEncoder().encode(value));return encode(iv)+'.'+encode(new Uint8Array(data))}
+export async function openCalendar(value:string,secret:string,context:string){try{const [iv,data]=value.split('.');const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:decode(iv),additionalData:new TextEncoder().encode(context)},await key(secret),decode(data));return new TextDecoder().decode(plain)}catch{throw new AccessError('Не удалось открыть подключение календаря. Проверьте ключ шифрования.',503)}}
+export const calendarRandom=()=>Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');
+export async function calendarChallenge(verifier:string){const hash=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier)));return encode(hash).replaceAll('+','-').replaceAll('/','_').replaceAll('=','')}

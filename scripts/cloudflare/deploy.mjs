@@ -26,6 +26,7 @@ writeFileSync('dist/d1-migrations.json',JSON.stringify({name:WORKER,compatibilit
 wrangler(['d1','migrations','apply',DB_NAME,'--remote','--config','dist/d1-migrations.json']);
 
 const config=JSON.parse(readFileSync(CONFIG,'utf8'));
+config.triggers={crons:["*/5 * * * *"]};
 config.name=WORKER;config.topLevelName=WORKER;config.workers_dev=true;
 config.d1_databases=[{binding:'DB',database_name:DB_NAME,database_id:databaseId}];
 // File access is served only by authenticated task routes, never by a public bucket URL.
