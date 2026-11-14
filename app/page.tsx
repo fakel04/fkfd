@@ -58,6 +58,22 @@ export default function Home(){
  const [isNew,setIsNew]=useState(false); const [quick,setQuick]=useState(''); const [categoryModal,setCategoryModal]=useState(false); const [newCategory,setNewCategory]=useState('');
  useEffect(()=>{try{const saved=localStorage.getItem('oblaka-board-layout');if(saved==='grid'||saved==='list')setLayout(saved)}catch{}},[]);
  function resetEditorTo(note:Note,start:Note|null=note){editorStart.current=structuredClone(start);setConfirmCancel(false);resetEditor(note)}
+ // iPhone paints the status-bar area (and Safari its bars) from theme-color and the page
+ // background. While a cloud is open, use the cloud's colour there so its background
+ // reaches the top of the screen; restore the board colours when it closes.
+ const editorColor=editor?.color;
+ useEffect(()=>{
+  if(!editorColor)return;
+  const meta=document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  const previousMeta=meta?.content,previousBackground=document.documentElement.style.backgroundColor;
+  const frame=requestAnimationFrame(()=>{
+   const color=editorElement.current&&getComputedStyle(editorElement.current).backgroundColor;
+   if(!color||color==='rgba(0, 0, 0, 0)')return;
+   if(meta)meta.content=color;
+   document.documentElement.style.backgroundColor=color;
+  });
+  return()=>{cancelAnimationFrame(frame);if(meta&&previousMeta!==undefined)meta.content=previousMeta;document.documentElement.style.backgroundColor=previousBackground};
+ },[editorColor]);
  function chooseLayout(value:'grid'|'list'){setLayout(value);try{localStorage.setItem('oblaka-board-layout',value)}catch{}}
  const [toast,setToast]=useState(''); const [palette,setPalette]=useState<string|null>(null);
  const [dragVisual,setDragVisual]=useState<{x:number;y:number;label:string;color?:string}|null>(null); const drag=useRef<Drag|null>(null);const dragEndedAt=useRef(0);const dragLanding=useRef<(()=>void)|null>(null);
