@@ -3,6 +3,7 @@ import {useEffect,useRef,useState,type FormEvent,type ChangeEvent} from 'react';
 import {ArrowLeft,ShieldCheck,UserPlus,Copy,LockKeyhole,RefreshCw,Upload,Cloud,Search} from 'lucide-react';
 import {canManage,roleNames,type MemberRole,type Session} from '../access-model';
 import {signInHref} from '../auth-links';
+import GoogleCalendarSettings from './google-calendar-settings';
 type Member={email:string;name:string;role:MemberRole;active:boolean;revision:number;joined:boolean;self:boolean;clouds:string[]};
 type CloudInfo={id:string;title:string;archived:boolean;color:string};
 type Data={session:Session;owner:{name:string;email:string};members:Member[];clouds:CloudInfo[]};
@@ -69,6 +70,7 @@ export default function Admin(){
      <p className="admin-hint">Участник видит только облака, которые вы ему выдадите, и те, что создаст сам. Укажите тот же email, с которым человек будет входить на сайт.</p>
     </section>
     <section className="admin-card access-steps"><h2>Первый вход</h2><p>Отправьте человеку ссылку. При входе он укажет свой email и получит на него код. Эта панель сама писем не отправляет.</p><button className="secondary" onClick={copyLink}><Copy size={17}/>Скопировать ссылку на облака</button></section>
+    {data.session.role==='superadmin'&&<GoogleCalendarSettings/>}
     {data.session.role==='superadmin'&&<section className="admin-card access-steps"><h2><Upload size={20}/>Перенести доску</h2><p>Загрузите файл, сохранённый кнопкой «Скачать копию доски». Он полностью заменит текущую доску у всех участников.</p><input ref={fileInput} type="file" accept="application/json,.json" hidden onChange={importBoard}/><button className="secondary" disabled={busy} onClick={()=>fileInput.current?.click()}><Upload size={17}/>Выбрать файл копии</button></section>}
     <section><div className="members-heading"><h2>Участники <span>{data.members.length}</span></h2><button aria-label="Обновить пользователей" onClick={load} disabled={busy||demo}><RefreshCw size={18}/></button></div>{!data.members.length?<div className="admin-card no-members">Пока только вы. Добавьте email первого участника выше.</div>:<div className="member-list">{data.members.map(m=><MemberCard key={m.email+':'+m.revision} member={m} actor={data.session} clouds={data.clouds} busy={busy} onChange={change} onClouds={grantClouds}/>)}</div>}</section>
     <section className="role-guide"><p><b>Участник</b> — видит и меняет только выданные ему облака и созданные им самим. В «Задачах» видит только дела из своих облаков.</p><p><b>Администратор</b> — видит и меняет все облака, приглашает участников и выдаёт им облака.</p><p><b>Суперадминистратор</b> — всё то же, а также назначает администраторов и переносит доску.</p></section>

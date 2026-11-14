@@ -49,3 +49,19 @@ export const taskMaterials=sqliteTable('task_materials',{
  fileKey:text('file_key'),fileName:text('file_name'),fileSize:integer('file_size'),authorId:text('author_id').notNull(),authorName:text('author_name').notNull(),
  createdAt:text('created_at').notNull(),updatedAt:text('updated_at').notNull(),revision:integer('revision').notNull().default(1),
 },table=>[index('task_materials_task').on(table.boardId,table.taskId,table.createdAt)]);
+
+/** Google credentials never enter the board or its downloadable backups. */
+export const calendarConnections=sqliteTable('calendar_connections',{
+ boardId:text('board_id').primaryKey(),ownerId:text('owner_id').notNull(),calendarId:text('calendar_id'),
+ refreshToken:text('refresh_token'),timeZone:text('time_zone').notNull().default('UTC'),enabled:integer('enabled').notNull().default(0),
+ lastSync:text('last_sync'),error:text('error'),lease:text('lease'),leaseUntil:integer('lease_until').notNull().default(0),
+});
+export const calendarLinks=sqliteTable('calendar_links',{
+ boardId:text('board_id').notNull(),taskId:text('task_id').notNull(),eventId:text('event_id').notNull(),
+ generation:integer('generation').notNull().default(0),baseline:text('baseline').notNull().default('null'),
+ pending:text('pending'),conflict:text('conflict'),resolution:text('resolution'),checkedAt:integer('checked_at').notNull().default(0),
+},table=>[primaryKey({columns:[table.boardId,table.taskId]}),index('calendar_links_event').on(table.boardId,table.eventId)]);
+export const calendarOauth=sqliteTable('calendar_oauth',{
+ stateHash:text('state_hash').primaryKey(),boardId:text('board_id').notNull(),ownerId:text('owner_id').notNull(),
+ verifier:text('verifier').notNull(),redirectUri:text('redirect_uri').notNull(),timeZone:text('time_zone').notNull(),expiresAt:integer('expires_at').notNull(),
+});

@@ -17,3 +17,5 @@
 .member-clouds-list input{width:18px;height:18px;flex-shrink:0}
 .member-clouds-list small{color:#80868b}
 .member-clouds-empty{padding:10px 12px;color:#80868b;font-size:14px}
+
+.calendar-settings>p,.calendar-settings details{line-height:1.65}.calendar-settings details{margin-top:18px;font-size:13px}.calendar-settings summary{cursor:pointer;color:#45617d}.calendar-settings details p{margin:12px 0}.calendar-settings details a{text-decoration:underline}.calendar-actions{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}.calendar-actions>button,.calendar-actions>a{display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:normal;text-align:center;min-height:42px}.calendar-conflicts{margin-top:20px}.calendar-conflicts h3{font-size:16px}.calendar-conflicts article{border-top:1px solid #e4e8ed;padding-top:12px;margin-top:12px;overflow-wrap:anywhere}.calendar-settings .admin-error,.calendar-settings .admin-notice{overflow-wrap:anywhere}@media(max-width:700px){.calendar-actions{display:grid;grid-template-columns:1fr}.calendar-settings>p{font-size:13px}.calendar-settings details{font-size:13px}}
