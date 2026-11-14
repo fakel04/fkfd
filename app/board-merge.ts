@@ -1,4 +1,4 @@
-import {type Board,type Note,type Task,FOCUS_NOTE_ID} from './board-model.ts';
+import {type Board,type Note,type Task,FOCUS_NOTE_ID,placePinned} from './board-model.ts';
 
 export type SyncOperation={id:string;base:Board;data:Board};
 export type MergeConflict={key:string;title:string;field:string;base:unknown;local:unknown;remote:unknown};
@@ -120,5 +120,7 @@ export function noteEdit(base:Board,original:Note|null,note:Note):SyncOperation{
  // Restore its old location only in the comparison baseline, never duplicate its identity.
  const before={...base,notes:original?base.notes.map(n=>n.id===original.id?original:{...n,tasks:n.tasks.filter(t=>!originalIds.has(t.id))}):base.notes.filter(n=>n.id!==note.id)};
  if(original&&!before.notes.some(n=>n.id===original.id))before.notes=[original,...before.notes];
- return {id:crypto.randomUUID(),base:before,data:{...before,notes:original?before.notes.map(n=>n.id===note.id?note:n):[note,...before.notes]}};
+ const notes=original?before.notes.map(n=>n.id===note.id?note:n):[note,...before.notes];
+ // Pinned in the editor: the cloud moves to the top of the pinned clouds.
+ return {id:crypto.randomUUID(),base:before,data:{...before,notes:note.pinned&&!original?.pinned?placePinned(notes,note.id):notes}};
 }
