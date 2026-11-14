@@ -24,6 +24,8 @@ import { TaskParentPicker } from './task-parent-picker';
 import { createParentResolver, canChooseParent } from './task-relations';
 import { TaskCheckbox } from './task-checkbox';
 import { TaskDetails, TaskText } from './task-details';
+import { buildAgenda, agendaUrgentCount, TODAY_VIEW } from './today-agenda';
+import { localDate } from './task-due';
 import { expandTaskLines, prepareTaskList } from './task-list-edit';
 import { boardLabels, preserveLabelCatalog, hasLabel, noteHasLabel, taskLabels, taskDueDate, taskDescription, FOCUS_NOTE_ID, pinnedFirst, moveTaskToCloud, ensureFocusBoard, isFocusNote, moveToFocus, returnFromFocus, sourceTitle, type Board, type Note, type Task, type TaskParent } from './board-model';
 import { useState, useEffect, useRef, useMemo, type FormEvent } from 'react';
@@ -265,6 +267,8 @@ export default function Home(){
  const active=board.notes.filter(n=>!n.deleted&&!n.archived);const categories=board.categories;
  const displayBoard=useMemo(()=>editor?{...board,notes:[...board.notes.filter(n=>n.id!==editor.id),editor]}:board,[board,editor]);
  const parentOf=useMemo(()=>createParentResolver(board),[board]);
+ const todayKey=localDate(new Date());
+ const agenda=useMemo(()=>buildAgenda(board,todayKey),[board,todayKey]);
  const editorParentOf=useMemo(()=>createParentResolver(displayBoard),[displayBoard]);
  const availableTags=boardLabels(displayBoard);
  function targetTask(target:TaskTarget|null){return target?(target.fromEditor?editor:board.notes.find(n=>n.id===target.noteId))?.tasks.find(t=>t.id===target.taskId):undefined}
@@ -283,12 +287,39 @@ export default function Home(){
   setParentPicker(null);
  }
  const filtered=board.notes.filter(n=>(view==='trash'?n.deleted:view==='archive'?n.archived&&!n.deleted:!n.deleted&&!n.archived&&(view==='all'||view==='focus'&&isFocusNote(n)||view==='pinned'&&n.pinned||n.category===view))&&(!tagView||noteHasLabel(n,tagView))&&(!query||[n.title,n.text,n.category,...n.tasks.map(t=>t.text+' '+(t.origin?sourceTitle(board,t):'')+' '+taskDescription(t)+' '+taskLabels(t).join(' ')+' '+(parentOf(t)?.title||''))].join(' ').toLocaleLowerCase().includes(query.toLocaleLowerCase())));
- const title=query?'Результаты поиска':tagView?'Тег: '+tagView:view==='all'?'Все облака':view==='focus'?'Задачи':view==='pinned'?'Закреплённые':view==='archive'?'Архив':view==='trash'?'Корзина':view;
+ const title=query?'Результаты поиска':tagView?'Тег: '+tagView:view==='all'?'Все облака':view==='focus'?'Задачи':view===TODAY_VIEW?'Сегодня':view==='pinned'?'Закреплённые':view==='archive'?'Архив':view==='trash'?'Корзина':view;
  const canEdit=writeAllowed.current;
  const canRead=ready;
  function nav(id:string){setTagView(null);setView(id);setSidebar(false);setPalette(null)}
  function navTag(label:string){setView('all');setTagView(label);setSidebar(false);setPalette(null)}
  const navItem=(id:string,label:string,icon:React.ReactNode,count?:number)=><button className={'nav-item '+(!tagView&&view===id?'active':'')} onClick={()=>nav(id)}>{icon}<span>{label}</span>{count!==undefined&&<small>{count}</small>}</button>;
+ /** «Сегодня»: computed from due dates, never stored. Tapping a task opens its cloud. */
+ function renderAgenda(full=false){
+  const limit=full?Infinity:10;const total=agenda.reduce((n,g)=>n+g.items.length,0);let shown=0;
+  const source=(id:string,fallback:Note)=>latest.current.notes.find(n=>n.id===id)??fallback;
+  return <article key="__today__" className={'note color-blue today-note'+(full?' today-full':'')} aria-label="Сегодня" onClick={e=>{if(!full&&!(e.target as HTMLElement).closest('button,a,input'))nav(TODAY_VIEW)}}>
+   <div className="note-title today-title">Сегодня</div>
+   {!total&&<p className="focus-empty">Здесь появятся дела со сроком. Срок ставится в облаке: смахните дело влево → «Ещё» → «Срок».</p>}
+   {agenda.map(group=>{
+    if(shown>=limit)return null;const items=group.items.slice(0,limit-shown);shown+=items.length;
+    return <div className={'agenda-group'+(group.overdue?' overdue':'')} key={group.key}>
+     <div className="agenda-date"><span>{group.label}</span>{group.hint&&<small>{group.hint}</small>}</div>
+     <div className="tasks">{items.map(({note,task,time,source:from})=><div className="task-row agenda-row" key={task.id}>
+      <TaskCheckbox done={task.done} label={task.text||'Без названия'} disabled={!canEdit} onToggleDone={()=>patch(note.id,{tasks:source(note.id,note).tasks.map(x=>x.id===task.id?{...x,done:!x.done}:x)})}/>
+      <button type="button" className="agenda-task" onClick={()=>openEditor(source(note.id,note))}><span className="task-label"><TaskText text={task.text||'Без названия'}/></span><small>{time&&<b>{time} · </b>}{from}</small></button>
+     </div>)}</div>
+    </div>;
+   })}
+   {!full&&total>shown&&<button className="show-all-tasks" onClick={()=>nav(TODAY_VIEW)} aria-label="Показать все дела со сроком" title={'Ещё дел: '+(total-shown)}><span aria-hidden="true">…</span></button>}
+  </article>;
+ }
+ // «Сегодня» sits right after «Задачи» among the pinned clouds on the main board.
+ const showAgenda=!query&&!tagView&&(view==='all'||view==='pinned');
+ function pinnedCards(){
+  const pinned=filtered.filter(n=>n.pinned),cards=pinned.map(renderCard);
+  if(showAgenda)cards.splice(pinned.findIndex(isFocusNote)+1,0,renderAgenda());
+  return cards;
+ }
  function renderCard(n:Note){
   const display=pinnedFirst(n.tasks.filter(t=>!t.done));const matches=query?display.filter(t=>[t.text,taskDescription(t),parentOf(t)?.title,...taskLabels(t)].join(' ').toLocaleLowerCase().includes(query.toLocaleLowerCase())):[];const queryTasks=matches.length?matches:display;const cardTasks=tagView?queryTasks.filter(t=>hasLabel(taskLabels(t),tagView)):queryTasks;const previewTasks=cardTasks.slice(0,8);
   return <article className={'note color-'+n.color+(n.deleted?' deleted':'')+(isFocusNote(n)?' focus-note':'')} data-note-id={n.id} key={n.id} onClick={e=>{
@@ -324,7 +355,7 @@ export default function Home(){
   <aside className={'sidebar '+(sidebar?'open':'')}>
    <a className="brand" href="/" aria-label="Облака — главная"><span className="brand-mark"><Cloud size={27} strokeWidth={1.65}/></span><span>облака<span className="brand-dot">.</span></span></a>
    <div className="workspace-label">ЛИЧНОЕ ПРОСТРАНСТВО</div>
-   <nav>{navItem('all','Все облака',<LayoutGrid size={18}/>,active.length)}{navItem('focus','Задачи',<CheckCheck size={18}/>,board.notes.find(isFocusNote)?.tasks.filter(t=>!t.done).length||0)}{navItem('pinned','Закреплённые',<Pin size={18}/>,active.filter(n=>n.pinned).length)}</nav>
+   <nav>{navItem('all','Все облака',<LayoutGrid size={18}/>,active.length)}{navItem('focus','Задачи',<CheckCheck size={18}/>,board.notes.find(isFocusNote)?.tasks.filter(t=>!t.done).length||0)}{navItem(TODAY_VIEW,'Сегодня',<CalendarDays size={18}/>,agendaUrgentCount(agenda,todayKey)||undefined)}{navItem('pinned','Закреплённые',<Pin size={18}/>,active.filter(n=>n.pinned).length)}</nav>
    {canEdit&&<nav className="mobile-create-nav"><button className="nav-item" onClick={()=>{setSidebar(false);setPalette(null);openNew()}}><Plus size={18}/><span>Новое облако</span></button></nav>}
    {!!availableTags.length&&<><div className="nav-heading"><span>ТЕГИ</span></div><nav>{availableTags.map(label=><button key={label} className={"nav-item "+(tagView===label?"active":"")} onClick={()=>navTag(label)}><Tag size={17}/><span>{label}</span><small>{active.filter(note=>noteHasLabel(note,label)).length||""}</small></button>)}</nav></>}
    <div className="nav-heading"><span>МОИ ТЕМЫ</span><button aria-label="Добавить тему" title="Добавить тему" onClick={()=>setCategoryModal(true)} disabled={!canEdit}><Plus size={16}/></button></div>
@@ -359,10 +390,10 @@ export default function Home(){
     {offline.legacy&&<div className="error-banner"><span>Найдена старая несинхронизированная копия. Скачайте её для сверки с текущей доской.</span><button onClick={()=>{downloadJSON(offline.legacy,'oblaka-recovered.json')}}>Скачать копию</button></div>}
     {!canEdit&&!conflict&&<div className="viewer-notice"><Eye size={15}/>Общая доска · только просмотр</div>}
     {demo&&<div className="preview-banner">Предпросмотр · изменения сохраняются только в этом браузере</div>}
-    {canEdit&&!['archive','trash','focus'].includes(view)&&<form className="composer" onSubmit={e=>{e.preventDefault();openNew()}}><span className="composer-plus"><Plus size={22}/></span><input aria-label="Название нового облака" placeholder="Новая заметка…" value={quick} onChange={e=>setQuick(e.target.value)} disabled={!canEdit}/><button type="button" className="composer-list" onClick={()=>openNew(true)} title="Создать список" disabled={!canEdit}><CheckCheck size={20}/><span>Список</span></button><span className="composer-divider"/><button className="create-button" disabled={!canEdit}><span>Создать облако</span><Plus size={17}/></button></form>}
+    {canEdit&&!['archive','trash','focus',TODAY_VIEW].includes(view)&&<form className="composer" onSubmit={e=>{e.preventDefault();openNew()}}><span className="composer-plus"><Plus size={22}/></span><input aria-label="Название нового облака" placeholder="Новая заметка…" value={quick} onChange={e=>setQuick(e.target.value)} disabled={!canEdit}/><button type="button" className="composer-list" onClick={()=>openNew(true)} title="Создать список" disabled={!canEdit}><CheckCheck size={20}/><span>Список</span></button><span className="composer-divider"/><button className="create-button" disabled={!canEdit}><span>Создать облако</span><Plus size={17}/></button></form>}
 
-    {!filtered.length?<div className="empty"><div className="empty-cloud"><Cloud size={66} strokeWidth={1}/><span>✧</span></div><h2>{query?'Пока ничего не нашлось':view==='trash'?'Корзина пуста':view==='archive'?'Здесь пока тихо':'Место для нового облака'}</h2><p>{query?'Попробуйте другое слово или уберите поиск.':view==='trash'?'Удалённые облака можно будет восстановить здесь.':view==='archive'?'Отправьте сюда то, что больше не нужно держать на виду.':'Запишите мысль, добавьте дела — и расставьте всё по-своему.'}</p>{!query&&!['archive','trash'].includes(view)&&<button className="primary" onClick={()=>openNew()} disabled={!canEdit}><Plus size={17}/>Создать облако</button>}</div>:<>
-     {filtered.some(n=>n.pinned)&&<section><div className="section-label"><Pin size={13}/><h2>Закреплённые</h2><span>{filtered.filter(n=>n.pinned).length}</span></div><MasonryNotes layout={layout}>{filtered.filter(n=>n.pinned).map(renderCard)}</MasonryNotes></section>}
+    {view===TODAY_VIEW?<section className="today-section"><MasonryNotes layout="list">{renderAgenda(true)}</MasonryNotes></section>:!filtered.length?<div className="empty"><div className="empty-cloud"><Cloud size={66} strokeWidth={1}/><span>✧</span></div><h2>{query?'Пока ничего не нашлось':view==='trash'?'Корзина пуста':view==='archive'?'Здесь пока тихо':'Место для нового облака'}</h2><p>{query?'Попробуйте другое слово или уберите поиск.':view==='trash'?'Удалённые облака можно будет восстановить здесь.':view==='archive'?'Отправьте сюда то, что больше не нужно держать на виду.':'Запишите мысль, добавьте дела — и расставьте всё по-своему.'}</p>{!query&&!['archive','trash'].includes(view)&&<button className="primary" onClick={()=>openNew()} disabled={!canEdit}><Plus size={17}/>Создать облако</button>}</div>:<>
+     {(filtered.some(n=>n.pinned)||showAgenda)&&<section><div className="section-label"><Pin size={13}/><h2>Закреплённые</h2><span>{filtered.filter(n=>n.pinned).length}</span></div><MasonryNotes layout={layout}>{pinnedCards()}</MasonryNotes></section>}
      {filtered.some(n=>!n.pinned)&&<section><div className="section-label"><Cloud size={14}/><h2>{filtered.some(n=>n.pinned)?'Другие заметки':'Заметки'}</h2><span>{filtered.filter(n=>!n.pinned).length}</span><small>Перетаскивайте за <GripVertical size={13}/></small></div><MasonryNotes layout={layout}>{filtered.filter(n=>!n.pinned).map(renderCard)}</MasonryNotes></section>}
     </>}
 
