@@ -31,7 +31,7 @@ import { AgendaTasks } from './agenda-tasks';
 import { expandTaskLines, prepareTaskList } from './task-list-edit';
 import { boardLabels, preserveLabelCatalog, hasLabel, noteHasLabel, taskLabels, taskDueDate, taskDescription, FOCUS_NOTE_ID, pinnedFirst, moveTaskToCloud, ensureFocusBoard, isFocusNote, moveToFocus, returnFromFocus, sourceTitle, type Board, type Note, type Task, type TaskParent } from './board-model';
 import { useState, useEffect, useRef, useMemo, type FormEvent } from 'react';
-import { AlignLeft, CornerDownRight, CalendarDays, Paperclip, ArrowDownUp, Rows2, ArrowLeft, Cloud, Search, Plus, LayoutGrid, List, Pin, Archive, Trash2, X, Check, GripVertical, ArrowUp, ArrowDown, Palette, Menu, Tag, CheckCheck, Download, RotateCcw, StickyNote, CircleHelp, CloudCheck, ArrowUpRight } from 'lucide-react';
+import { AlignLeft, ChevronLeft, CornerDownRight, CalendarDays, Paperclip, ArrowDownUp, Rows2, ArrowLeft, Cloud, Search, Plus, LayoutGrid, List, Pin, Archive, Trash2, X, Check, GripVertical, ArrowUp, ArrowDown, Palette, Menu, Tag, CheckCheck, Download, RotateCcw, StickyNote, CircleHelp, CloudCheck, ArrowUpRight } from 'lucide-react';
 
 type TaskTarget={noteId:string;taskId:string;fromEditor:boolean};
 type Drag={kind:'note'|'task';noteId:string;taskId?:string;x:number;y:number;active:boolean;label:string;pointerId:number;lift?:TaskLift;card?:HTMLElement;color?:string};
@@ -66,13 +66,13 @@ export default function Home(){
  // iPhone paints the status-bar area (and Safari its bars) from theme-color and the page
  // background. While a cloud is open, use the cloud's colour there so its background
  // reaches the top of the screen; restore the board colours when it closes.
- const editorColor=editor?.color;
+ const editorColor=editor?.color??(view===TODAY_VIEW?'today':undefined);
  useEffect(()=>{
   if(!editorColor)return;
   const meta=document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
   const previousMeta=meta?.content,previousBackground=document.documentElement.style.backgroundColor;
   const frame=requestAnimationFrame(()=>{
-   const color=editorElement.current&&getComputedStyle(editorElement.current).backgroundColor;
+   const panel=editorElement.current??document.querySelector<HTMLElement>('.today-editor');const color=panel&&getComputedStyle(panel).backgroundColor;
    if(!color||color==='rgba(0, 0, 0, 0)')return;
    if(meta)meta.content=color;
    document.documentElement.style.backgroundColor=color;
@@ -302,8 +302,8 @@ export default function Home(){
  function renderAgenda(full=false){
   const total=agenda.reduce((n,g)=>n+g.items.length,0);const shown=full?total:Math.min(total,10);
   const source=(id:string,fallback:Note)=>latest.current.notes.find(n=>n.id===id)??fallback;
-  return <article key="__today__" className={'note color-blue today-note'+(full?' today-full':'')} aria-label="Сегодня" onClick={e=>{if(!full&&!(e.target as HTMLElement).closest('.task-checkbox')){nav(TODAY_VIEW);window.scrollTo({top:0})}}}>
-   <div className="note-title today-title">Сегодня</div>
+  // The board card has its own title; the opened «Сегодня» shows the name in the panel header.
+  const body=<>
    {!total&&<p className="focus-empty">Здесь появятся дела со сроком. Срок ставится в облаке: смахните дело влево → «Ещё» → «Срок».</p>}
    <AgendaTasks groups={agenda} today={todayKey} full={full} readOnly={!canEdit}
     onMove={(id,date,beforeId)=>{if(!writeAllowed.current||conflict)return;dragEndedAt.current=Date.now();update(current=>moveAgendaTask(current,todayKey,id,date,beforeId));}}
@@ -321,7 +321,10 @@ export default function Home(){
     onCloud={(note,task)=>openTaskActions(note.id,task.id,false,'cloud')}
     onMore={(note,task)=>openTaskActions(note.id,task.id,false,'more')}/>
    {!full&&total>shown&&<button className="show-all-tasks" aria-label="Показать все дела со сроком" title={'Ещё дел: '+(total-shown)}><span aria-hidden="true">…</span></button>}
-  </article>;
+  </>;
+  return full
+   ?<div className="today-full">{body}</div>
+   :<article key="__today__" className="note color-blue today-note" aria-label="Сегодня" onClick={e=>{if(!(e.target as HTMLElement).closest('.task-checkbox'))nav(TODAY_VIEW)}}><div className="note-title today-title">Сегодня</div>{body}</article>;
  }
  // «Сегодня» sits right after «Задачи» among the pinned clouds on the main board.
  const showAgenda=!query&&!tagView&&(view==='all'||view==='pinned');
@@ -404,7 +407,7 @@ export default function Home(){
     {demo&&<div className="preview-banner">Предпросмотр · изменения сохраняются только в этом браузере</div>}
     {canEdit&&!['archive','trash','focus',TODAY_VIEW].includes(view)&&<form className="composer" onSubmit={e=>{e.preventDefault();openNew()}}><span className="composer-plus"><Plus size={22}/></span><input aria-label="Название нового облака" placeholder="Новая заметка…" value={quick} onChange={e=>setQuick(e.target.value)} disabled={!canEdit}/><button type="button" className="composer-list" onClick={()=>openNew(true)} title="Создать список" disabled={!canEdit}><CheckCheck size={20}/><span>Список</span></button><span className="composer-divider"/><button className="create-button" disabled={!canEdit}><span>Создать облако</span><Plus size={17}/></button></form>}
 
-    {view===TODAY_VIEW?<section className="today-section"><MasonryNotes layout="list">{renderAgenda(true)}</MasonryNotes></section>:!filtered.length?<div className="empty"><div className="empty-cloud"><Cloud size={66} strokeWidth={1}/><span>✧</span></div><h2>{query?'Пока ничего не нашлось':view==='trash'?'Корзина пуста':view==='archive'?'Здесь пока тихо':'Место для нового облака'}</h2><p>{query?'Попробуйте другое слово или уберите поиск.':view==='trash'?'Удалённые облака можно будет восстановить здесь.':view==='archive'?'Отправьте сюда то, что больше не нужно держать на виду.':'Запишите мысль, добавьте дела — и расставьте всё по-своему.'}</p>{!query&&!['archive','trash'].includes(view)&&<button className="primary" onClick={()=>openNew()} disabled={!canEdit}><Plus size={17}/>Создать облако</button>}</div>:<>
+    {view===TODAY_VIEW?null:!filtered.length?<div className="empty"><div className="empty-cloud"><Cloud size={66} strokeWidth={1}/><span>✧</span></div><h2>{query?'Пока ничего не нашлось':view==='trash'?'Корзина пуста':view==='archive'?'Здесь пока тихо':'Место для нового облака'}</h2><p>{query?'Попробуйте другое слово или уберите поиск.':view==='trash'?'Удалённые облака можно будет восстановить здесь.':view==='archive'?'Отправьте сюда то, что больше не нужно держать на виду.':'Запишите мысль, добавьте дела — и расставьте всё по-своему.'}</p>{!query&&!['archive','trash'].includes(view)&&<button className="primary" onClick={()=>openNew()} disabled={!canEdit}><Plus size={17}/>Создать облако</button>}</div>:<>
      {(filtered.some(n=>n.pinned)||showAgenda)&&<section><div className="section-label"><Pin size={13}/><h2>Закреплённые</h2><span>{filtered.filter(n=>n.pinned).length}</span></div><MasonryNotes layout={layout}>{pinnedCards()}</MasonryNotes></section>}
      {filtered.some(n=>!n.pinned)&&<section><div className="section-label"><Cloud size={14}/><h2>{filtered.some(n=>n.pinned)?'Другие заметки':'Заметки'}</h2><span>{filtered.filter(n=>!n.pinned).length}</span><small>Перетаскивайте за <GripVertical size={13}/></small></div><MasonryNotes layout={layout}>{filtered.filter(n=>!n.pinned).map(renderCard)}</MasonryNotes></section>}
     </>}
@@ -420,12 +423,12 @@ export default function Home(){
     if((event.ctrlKey||event.metaKey)&&!event.altKey&&(key==='z'||key==='y')){event.preventDefault();event.stopPropagation();stepEditorHistory(key==='y'||event.shiftKey?'redo':'undo')}
     else if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(event.key))editorHistory.breakGroup();
    }}>
-    <div className="editor-top"><button className="icon-button" aria-label="Назад к облакам" onClick={saveEditor}><ArrowLeft size={23}/></button><span>{isFocusNote(editor)?'ВРЕМЕННЫЙ СПИСОК ДЕЛ':isNew?'НОВОЕ ОБЛАКО':'ВАШЕ ОБЛАКО'}</span>
-     <button className="icon-button cloud-overview-toggle" aria-label="Показать все облака" title="Все облака" onClick={showAllClouds}><LayoutGrid size={20}/></button>
-     <button className="icon-button editor-pin" aria-label={editor.pinned?'Открепить облако':'Закрепить облако'} title={editor.pinned?'Открепить облако':'Закрепить облако'} aria-pressed={editor.pinned} disabled={!canEdit||isFocusNote(editor)} onClick={()=>setEditor({...editor,pinned:!editor.pinned})}><Pin size={20} fill={editor.pinned?'currentColor':'none'}/></button>
-     <button className="icon-button" aria-label="Сохранить и закрыть" onClick={saveEditor}><X size={22}/></button>
+    {/* Header as in Keep: back, the cloud name, pin on the right. */}
+    <div className="editor-top">
+     <button type="button" className="editor-round" aria-label="Назад к облакам" title="Назад" onClick={saveEditor}><ChevronLeft size={26}/></button>
+     <input readOnly={!canEdit||isFocusNote(editor)} className="editor-title" aria-label="Название облака" placeholder="Название облака" value={editor.title} maxLength={300} onChange={e=>setEditor({...editor,title:e.target.value},'title')}/>
+     {!isFocusNote(editor)&&<button type="button" className="editor-round editor-pin" aria-label={editor.pinned?'Открепить облако':'Закрепить облако'} title={editor.pinned?'Открепить облако':'Закрепить облако'} aria-pressed={editor.pinned} disabled={!canEdit} onClick={()=>setEditor({...editor,pinned:!editor.pinned})}><Pin size={20} fill={editor.pinned?'currentColor':'none'}/></button>}
     </div>
-    <input readOnly={!canEdit||isFocusNote(editor)} className="editor-title" aria-label="Заголовок облака" placeholder="Название облака" value={editor.title} maxLength={300} onChange={e=>setEditor({...editor,title:e.target.value},'title')}/>
     {!isFocusNote(editor)&&!editor.tasks.length&&<textarea readOnly={!canEdit} className="editor-text" placeholder="О чём думаете? Можно просто писать…" aria-label="Текст заметки" value={editor.text} onChange={e=>setEditor({...editor,text:e.target.value},'text')}/>}
     <EditorTaskList readOnly={!canEdit} tasks={editor.tasks} focusMode={isFocusNote(editor)} getSourceTitle={t=>sourceTitle(board,t)} getParentTitle={t=>editorParentOf(t)?.title} onToggleFocus={id=>toggleTaskFocus(editor.id,id,true)} onMoveToCloud={id=>openTaskActions(editor.id,id,true,'cloud')} onMore={id=>openTaskActions(editor.id,id,true,'more')} onChange={(tasks,group)=>setEditor(current=>current?{...current,tasks}:null,group)}/>
     {isFocusNote(editor)&&!editor.tasks.length&&<p className="focus-empty">Пока пусто. Откройте другое облако, смахните дело вправо и нажмите «В задачи».</p>}
@@ -435,6 +438,15 @@ export default function Home(){
     </div>}
     {(offline.storageFailed||offline.tooLarge)&&<small className="editor-save-status" role="alert">{offline.tooLarge?notice?.message:error}</small>}
     <div className="editor-footer">{canEdit&&!isNew&&!isFocusNote(editor)&&<div className="editor-extra-actions"><button className="icon-button" aria-label={editor.archived?'Вернуть на доску':'В архив'} onClick={()=>saveEditorWith({archived:!editor.archived})}><Archive size={21}/></button><button className="icon-button" aria-label="В корзину" onClick={()=>saveEditorWith({deleted:true})}><Trash2 size={21}/></button></div>}{canEdit&&<button className="text-button" onClick={cancelEditor}>Отменить</button>}<button className="primary" onClick={saveEditor}><Check size={17}/>Готово</button></div>
+   </div>
+  </Modal>}
+  {view===TODAY_VIEW&&!editor&&<Modal focusPanel label="Сегодня" onClose={()=>nav('all')}>
+   <div className="editor color-blue today-editor">
+    <div className="editor-top">
+     <button type="button" className="editor-round" aria-label="Назад к облакам" title="Назад" onClick={()=>nav('all')}><ChevronLeft size={26}/></button>
+     <h1 className="editor-title today-heading">Сегодня</h1>
+    </div>
+    {renderAgenda(true)}
    </div>
   </Modal>}
   {editor&&confirmCancel&&<Modal focusPanel label="Отменить изменения" onClose={()=>setConfirmCancel(false)}><div className="small-modal"><h2>Отменить изменения?</h2><p>{isNew?'Новое облако не будет создано.':'Правки в этом облаке пропадут.'} Чтобы сохранить, нажмите «Готово».</p><div className="modal-actions"><button className="text-button" onClick={discardEditor}>Отменить изменения</button><button className="primary" autoFocus onClick={()=>setConfirmCancel(false)}>Продолжить редактирование</button></div></div></Modal>}
