@@ -10,7 +10,7 @@ export type Layout=Map<HTMLElement,DOMRect>;
 export function captureTaskLayout(host:Element|Document):Layout{
  return new Map([...host.querySelectorAll<HTMLElement>('.swipe-task,.note')].map(element=>[element,element.getBoundingClientRect()]));
 }
-export function animateTaskLayout(before:Layout,skip?:HTMLElement){
+export function animateTaskLayout(before:Layout,skip?:HTMLElement,duration=300){
  if(reducedMotion())return()=>{};
  for(const element of before.keys())running.get(element)?.cancel();
  const after=new Map([...before.keys()].filter(element=>element.isConnected).map(element=>[element,element.getBoundingClientRect()]));
@@ -24,7 +24,7 @@ export function animateTaskLayout(before:Layout,skip?:HTMLElement){
    if(oldParent&&newParent){dx-=oldParent.left-newParent.left;dy-=oldParent.top-newParent.top;break;}
   }
   if(Math.abs(dx)<1&&Math.abs(dy)<1)continue;
-  const animation=element.animate([{transform:`translate(${dx}px,${dy}px)`},{transform:'translate(0,0)'}],{duration:300,easing:EASE});
+  const animation=element.animate([{transform:`translate(${dx}px,${dy}px)`},{transform:'translate(0,0)'}],{duration,easing:EASE});
   running.set(element,animation);animations.push(animation);
  }
  return()=>animations.forEach(animation=>animation.cancel());

@@ -4,7 +4,9 @@ export type SyncOperation={id:string;base:Board;data:Board};
 export type MergeConflict={key:string;title:string;field:string;base:unknown;local:unknown;remote:unknown};
 export type Choices=Record<string,'local'|'remote'>;
 type Entity=Record<string,unknown>;
+// Order keys are namespaced: a cloud's id is user data and may be any string, including "notes".
 type Flat={entities:Map<string,Entity>;orders:Map<string,string[]>};
+const BOARD_ORDER='board:notes',taskOrder=(noteId:string)=>'tasks:'+noteId;
 export function equal(a:unknown,b:unknown):boolean{
  if(Object.is(a,b))return true;
  if(!a||!b||typeof a!=='object'||typeof b!=='object')return false;
@@ -13,8 +15,8 @@ export function equal(a:unknown,b:unknown):boolean{
  return [...keys].every(k=>equal(x[k],y[k]));
 }
 function flatten(board:Board):Flat{
- const entities=new Map<string,Entity>(),orders=new Map<string,string[]>();orders.set('notes',board.notes.map(n=>n.id));
- for(const note of board.notes){const {tasks,...n}=note;entities.set('n:'+note.id,n);orders.set(note.id,tasks.map(t=>t.id));
+ const entities=new Map<string,Entity>(),orders=new Map<string,string[]>();orders.set(BOARD_ORDER,board.notes.map(n=>n.id));
+ for(const note of board.notes){const {tasks,...n}=note;entities.set('n:'+note.id,n);orders.set(taskOrder(note.id),tasks.map(t=>t.id));
   for(const task of tasks){const {focused,origin,...t}=task;entities.set('t:'+task.id,{...t,location:{noteId:note.id,...focused!==undefined?{focused}:{},...origin?{origin}:{}}});}
  }
  return {entities,orders};
@@ -92,10 +94,10 @@ export function mergeBoards(base:Board,local:Board,remote:Board,choices:Choices=
   result.set(key,next);
  }
  const noteIds=[...result.keys()].filter(k=>k.startsWith('n:')).map(k=>k.slice(2));
- const order=mergeOrder(b.orders.get('notes')||[],l.orders.get('notes')||[],r.orders.get('notes')||[],noteIds,(bv,lv,rv)=>decide('notes','order',bv,lv,rv,'Облака'));
+ const order=mergeOrder(b.orders.get(BOARD_ORDER)||[],l.orders.get(BOARD_ORDER)||[],r.orders.get(BOARD_ORDER)||[],noteIds,(bv,lv,rv)=>decide('notes','order',bv,lv,rv,'Облака'));
  const notes=order.map(id=>{
   const members=[...result.entries()].filter(([k,e])=>k.startsWith('t:')&&(e.location as Entity)?.noteId===id);
-  const tasksOrder=mergeOrder(b.orders.get(id)||[],l.orders.get(id)||[],r.orders.get(id)||[],members.map(([,e])=>String(e.id)),(bv,lv,rv)=>decide('o:'+id,'order',bv,lv,rv,label(result.get('n:'+id))));
+  const tasksOrder=mergeOrder(b.orders.get(taskOrder(id))||[],l.orders.get(taskOrder(id))||[],r.orders.get(taskOrder(id))||[],members.map(([,e])=>String(e.id)),(bv,lv,rv)=>decide('o:'+id,'order',bv,lv,rv,label(result.get('n:'+id))));
   const tasks=tasksOrder.map(taskId=>{const {location,...task}=result.get('t:'+taskId)!;const {noteId:_,...extra}=location as Entity;return {...task,...extra} as Task});
   return {...result.get('n:'+id),tasks} as Note;
  });

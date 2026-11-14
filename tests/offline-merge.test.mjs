@@ -61,3 +61,18 @@ test('physical cloud removal cannot discard remotely edited children after choos
  const b=base(),l=edit(b,v=>v.notes.shift()),r=edit(b,v=>v.notes[0].tasks[0].text='keep');const m=mergeBoards(b,l,r);assert.ok(m.conflicts.length);
  const choices=Object.fromEntries(m.conflicts.map(c=>[c.key,'remote']));const result=mergeBoards(b,l,r,choices);assert.equal(result.conflicts.length,0);assert.equal(result.data.notes.find(n=>n.id==='a').tasks[0].text,'keep');
 });
+test('a cloud whose id is "notes" does not override the order of clouds',()=>{
+ // The starter board contains a cloud with id "notes"; its task list used to replace the board order.
+ const b={categories:[],notes:[note('focus'),note('a'),note('notes',[task('t1'),task('t2')]),note('b')]};
+ const l=edit(b,v=>{const [a]=v.notes.splice(1,1);v.notes.unshift(a)});
+ for(const optimistic of [true,false]){
+  const m=mergeBoards(b,l,b,{},optimistic);
+  assert.deepEqual(m.data.notes.map(n=>n.id),['a','focus','notes','b']);
+  assert.deepEqual(m.data.notes[2].tasks.map(t=>t.id),['t1','t2']);
+  assert.equal(m.conflicts.length,0);
+ }
+ const r=edit(b,v=>{v.notes[2].tasks.reverse()});
+ const m=mergeBoards(b,l,r);
+ assert.deepEqual(m.data.notes.map(n=>n.id),['a','focus','notes','b']);
+ assert.deepEqual(m.data.notes[2].tasks.map(t=>t.id),['t2','t1']);
+});

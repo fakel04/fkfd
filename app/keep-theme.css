@@ -88,3 +88,12 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
 /* Phone: creating a cloud lives in the ☰ menu; desktop uses the composer above the board. */
 .mobile-create-nav{display:none}
 @media(max-width:760px){.mobile-create-nav{display:block}}
+
+/* Moving a cloud: the source stays in place, dimmed; the ghost in hand has the cloud's colour;
+   the drop target highlights softly. Cards then glide to their new places (task-motion). */
+.note{transition:opacity 180ms ease,transform 180ms ease}
+.note.drag-source{opacity:.35;transform:scale(.97)}
+.drag-ghost{transform:rotate(-1.5deg) scale(1.02);box-shadow:0 12px 32px #3c404333;animation:ghost-in 140ms ease-out}
+@keyframes ghost-in{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:rotate(-1.5deg) scale(1.02)}}
+.drop-target{transition:outline-color 150ms ease;background-clip:padding-box}
+@media(prefers-reduced-motion:reduce){.note,.drag-ghost{transition:none;animation:none}.note.drag-source{transform:none}}
