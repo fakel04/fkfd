@@ -29,6 +29,7 @@ import { buildAgenda, agendaUrgentCount, moveAgendaTask, splitAgendaTask, TODAY_
 import { localDate } from './task-due';
 import { AgendaTasks } from './agenda-tasks';
 import { attachPullStretch } from './pull-stretch';
+import { FitTasks } from './fit-tasks';
 import { expandTaskLines, prepareTaskList } from './task-list-edit';
 import { boardLabels, preserveLabelCatalog, hasLabel, noteHasLabel, taskLabels, taskDueDate, taskDescription, FOCUS_NOTE_ID, pinnedFirst, moveTaskToCloud, ensureFocusBoard, isFocusNote, moveToFocus, returnFromFocus, sourceTitle, type Board, type Note, type Task, type TaskParent } from './board-model';
 import { useState, useEffect, useRef, useMemo, type FormEvent } from 'react';
@@ -303,12 +304,12 @@ export default function Home(){
  const navItem=(id:string,label:string,icon:React.ReactNode,count?:number)=><button className={'nav-item '+(!tagView&&view===id?'active':'')} onClick={()=>nav(id)}>{icon}<span>{label}</span>{count!==undefined&&<small>{count}</small>}</button>;
  /** «Сегодня»: computed from due dates, never stored. Tapping a task opens its cloud. */
  function renderAgenda(full=false){
-  const total=agenda.reduce((n,g)=>n+g.items.length,0);const shown=full?total:Math.min(total,10);
+  const total=agenda.reduce((n,g)=>n+g.items.length,0);
   const source=(id:string,fallback:Note)=>latest.current.notes.find(n=>n.id===id)??fallback;
   // The board card has its own title; the opened «Сегодня» shows the name in the panel header.
   const body=<>
    {!total&&<p className="focus-empty">Здесь появятся дела со сроком. Срок ставится в облаке: смахните дело влево → «Ещё» → «Срок».</p>}
-   <AgendaTasks groups={agenda} today={todayKey} full={full} readOnly={!canEdit}
+   {(()=>{const list=<AgendaTasks groups={agenda} today={todayKey} full={full} readOnly={!canEdit}
     onMove={(id,date,beforeId)=>{if(!writeAllowed.current||conflict)return;dragEndedAt.current=Date.now();update(current=>moveAgendaTask(current,todayKey,id,date,beforeId));}}
     onToggle={(note,task)=>patch(note.id,{tasks:source(note.id,note).tasks.map(item=>item.id===task.id?{...item,done:!item.done}:item)})}
     onOpen={note=>openEditor(source(note.id,note))}
@@ -322,8 +323,10 @@ export default function Home(){
     }}
     onFocus={(note,task)=>toggleTaskFocus(note.id,task.id)}
     onCloud={(note,task)=>openTaskActions(note.id,task.id,false,'cloud')}
-    onMore={(note,task)=>openTaskActions(note.id,task.id,false,'more')}/>
-   {!full&&total>shown&&<button className="show-all-tasks" aria-label="Показать все дела со сроком" title={'Ещё дел: '+(total-shown)}><span aria-hidden="true">…</span></button>}
+    onMore={(note,task)=>openTaskActions(note.id,task.id,false,'more')}/>;
+    return full?list:<FitTasks total={total} watch={layout+'|'+agenda.flatMap(g=>g.items.slice(0,6).map(i=>i.task.id+':'+i.task.text+':'+i.date+':'+i.time+':'+i.source)).join('|')}
+     more={hidden=><button className="show-all-tasks" aria-label="Показать все дела со сроком" title={'Ещё дел: '+hidden}><span aria-hidden="true">…</span></button>}>{list}</FitTasks>;
+   })()}
   </>;
   return full
    ?<div className="today-full">{body}</div>
@@ -337,7 +340,7 @@ export default function Home(){
   return cards;
  }
  function renderCard(n:Note){
-  const display=pinnedFirst(n.tasks.filter(t=>!t.done));const matches=query?display.filter(t=>[t.text,taskDescription(t),parentOf(t)?.title,...taskLabels(t)].join(' ').toLocaleLowerCase().includes(query.toLocaleLowerCase())):[];const queryTasks=matches.length?matches:display;const cardTasks=tagView?queryTasks.filter(t=>hasLabel(taskLabels(t),tagView)):queryTasks;const previewTasks=cardTasks.slice(0,8);
+  const display=pinnedFirst(n.tasks.filter(t=>!t.done));const matches=query?display.filter(t=>[t.text,taskDescription(t),parentOf(t)?.title,...taskLabels(t)].join(' ').toLocaleLowerCase().includes(query.toLocaleLowerCase())):[];const queryTasks=matches.length?matches:display;const cardTasks=tagView?queryTasks.filter(t=>hasLabel(taskLabels(t),tagView)):queryTasks;const previewTasks=cardTasks.slice(0,6);
   return <article className={'note color-'+n.color+(n.deleted?' deleted':'')+(isFocusNote(n)?' focus-note':'')} data-note-id={n.id} key={n.id} onClick={e=>{
     // A tap anywhere on the card opens the cloud, including empty task rows and gaps.
     // Controls with their own action (checkbox, pin, tools, palette, inputs) keep it.
@@ -348,16 +351,17 @@ export default function Home(){
    <div className="note-top"><button className="drag-handle icon-button" aria-label={'Перетащить облако '+n.title} title="Потяните, чтобы переместить. С клавиатуры: ↑ и ↓" onPointerDown={e=>startDrag(e,'note',n)} onKeyDown={e=>keyboardMove(e,n)} disabled={!canEdit}><GripVertical size={18}/></button>{n.example&&<span className="example">ПРИМЕР</span>}{isFocusNote(n)&&<span className="focus-badge">TO-DO</span>}<button className={'pin icon-button '+(n.pinned?'is-pinned':'')} title={n.pinned?'Открепить':'Закрепить'} aria-label={n.pinned?'Открепить '+n.title:'Закрепить '+n.title} onClick={()=>patch(n.id,{pinned:!n.pinned})} disabled={!canEdit||n.deleted||isFocusNote(n)}><Pin size={17} fill={n.pinned?'currentColor':'none'}/></button></div>
    <button className="note-title" onClick={()=>{openEditor(n)}} disabled={!canRead||n.deleted}>{n.title||'Без названия'}</button>
    {!n.tasks.length&&!isFocusNote(n)&&n.text&&<p className="note-text">{n.text}</p>}
-   {!!previewTasks.length&&<div className="tasks">{previewTasks.map(t=><div key={t.id} className="swipe-task"><div className="swipe-content no-task-menu"><div className={'task-row '+(t.done?'done':'')+(parentOf(t)?' subtask':'')} key={t.id} data-task-id={t.id}>
+   {!!previewTasks.length&&<FitTasks total={cardTasks.length} watch={layout+'|'+cardTasks.length+'|'+previewTasks.map(t=>t.id+':'+t.text+':'+(isFocusNote(n)&&t.origin?sourceTitle(board,t):'')).join('|')}
+    more={hidden=><button className="show-all-tasks" onClick={()=>{openEditor(n)}} disabled={!canRead||n.deleted} aria-label={"Показать все задачи: "+n.title} title={"Ещё задач: "+hidden}><span aria-hidden="true">…</span></button>}>
+   <div className="tasks">{previewTasks.map(t=><div key={t.id} className="swipe-task" data-fit><div className="swipe-content no-task-menu"><div className={'task-row '+(t.done?'done':'')+(parentOf(t)?' subtask':'')} key={t.id} data-task-id={t.id}>
     <button className="task-drag drag-handle" title="Перетащить задачу" aria-label={'Перетащить задачу '+t.text} disabled={!canEdit||n.deleted} onPointerDown={e=>startDrag(e,'task',n,t)} onKeyDown={e=>keyboardMove(e,n,t)}><GripVertical size={14}/></button>
     <TaskCheckbox done={t.done} focused={t.focused} label={t.text} disabled={!canEdit||n.deleted}
      onToggleDone={()=>patch(n.id,{tasks:n.tasks.map(x=>x.id===t.id?{...x,done:!x.done}:x)})}/>
     <div className="task-copy"><span className="task-label"><TaskText text={t.text}/></span>
-     {isFocusNote(n)&&t.origin&&<small className="task-origin">{sourceTitle(board,t)}</small>}
+     {isFocusNote(n)&&t.origin&&<small className="task-origin" data-fit-caption>{sourceTitle(board,t)}</small>}
      <TaskDetails task={t} parentTitle={parentOf(t)?.title}/>
     </div>
-   </div></div></div>)}</div>}
-   {cardTasks.length>previewTasks.length&&<button className="show-all-tasks" onClick={()=>{openEditor(n)}} disabled={!canRead||n.deleted} aria-label={"Показать все задачи: "+n.title} title={"Ещё задач: "+(cardTasks.length-previewTasks.length)}><span aria-hidden="true">…</span></button>}
+   </div></div></div>)}</div></FitTasks>}
    {isFocusNote(n)&&!n.tasks.length&&<p className="focus-empty">Откройте облако, смахните дело вправо и нажмите «В задачи» — оно появится здесь.</p>}
    {!n.deleted&&!isFocusNote(n)&&<form className="inline-add" onSubmit={e=>{e.preventDefault();const input=e.currentTarget.elements.namedItem('task') as HTMLInputElement;addTask(n,input.value);input.value=''}}><Plus size={15}/><input name="task" placeholder={layout==='grid'?'Задача…':'Добавить задачу'} aria-label={'Новая задача в '+n.title} disabled={!canEdit}/></form>}
    <div className="note-bottom">{n.category?<button className="tag" title={"Тема: "+n.category} onClick={()=>nav(n.category)}>{n.category}</button>:<span/>}<div className="card-tools">

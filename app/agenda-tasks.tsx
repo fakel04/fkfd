@@ -121,15 +121,15 @@ export function AgendaTasks(props:Props){
   flushSync(()=>props.onMove(id,date,beforeId));landing.current=animateTaskLayout(layout);setAnnouncement('Дело перенесено на '+dateLabel(date));
   [...root.current?.querySelectorAll<HTMLElement>('[data-agenda-task-id]')??[]].find(row=>row.dataset.agendaTaskId===id)?.querySelector<HTMLButtonElement>('.agenda-drag-handle')?.focus({preventScroll:true});
  }
- const days=agendaDays(props.groups,props.today,active);let shown=0;const limit=props.full?Infinity:10;
+ const days=agendaDays(props.groups,props.today,active);let shown=0;const limit=props.full?Infinity:6;
  return <div ref={root} className={'agenda-list'+(active?' agenda-sorting':'')} onClickCapture={event=>{if(Date.now()-endedAt.current<400){event.preventDefault();event.stopPropagation()}}}>
   {days.map(day=>{
    const items=day.items.slice(0,Math.max(0,limit-shown));shown+=items.length;if(!items.length&&day.items.length)return null;
-   return <section className={'agenda-group'+(day.overdue?' overdue':'')+(target?.date===day.key?' agenda-drop-day':'')} data-agenda-day={day.key} key={day.key}>
-    <div className="agenda-date"><span>{day.label}</span>{day.hint&&<small>{day.hint}</small>}</div>
+   return <section data-fit-section className={'agenda-group'+(day.overdue?' overdue':'')+(target?.date===day.key?' agenda-drop-day':'')} data-agenda-day={day.key} key={day.key}>
+    <div className="agenda-date" data-fit-head><span>{day.label}</span>{day.hint&&<small>{day.hint}</small>}</div>
     {!items.length&&<div className="agenda-empty-drop">Перенести на этот день</div>}
     <div className="tasks">{items.map(({note,task,time,source})=>{
-     const row=<div className="task-row agenda-row" key={task.id} data-agenda-task-id={task.id}>
+     const row=<div className="task-row agenda-row" key={task.id} data-agenda-task-id={task.id} data-fit={props.full?undefined:''}>
      {props.full&&!props.readOnly&&<button type="button" className="agenda-drag-handle drag-handle" aria-label={'Переместить дело '+(task.text||'Без названия')} title="Перетащить дело. С клавиатуры: ↑ и ↓" onPointerDown={event=>start(event,task.id)} onKeyDown={event=>keyboard(event,task.id)} onClick={event=>event.stopPropagation()}><GripVertical size={18}/></button>}
      <TaskCheckbox done={task.done} label={task.text||'Без названия'} disabled={props.readOnly} onToggleDone={()=>props.onToggle(note,task)}/>
      {props.full?<div className="agenda-task agenda-task-edit"><AgendaText task={task} readOnly={props.readOnly} onCommit={text=>props.onEditText?.(note,task,text)} onSplit={props.onSplit&&((before,after)=>{
@@ -138,7 +138,7 @@ export function AgendaTasks(props:Props){
        // iPhone keeps the keyboard open only for focus changes made synchronously.
        const input=[...root.current?.querySelectorAll<HTMLElement>('[data-agenda-task-id]')??[]].find(row=>row.dataset.agendaTaskId===id)?.querySelector<HTMLTextAreaElement>('textarea');
        input?.focus({preventScroll:true});input?.setSelectionRange(0,0);input?.scrollIntoView({block:'nearest'});
-      })}/>{(time||source)&&<span className="agenda-source">{time&&<b>{time}{source?' · ':''}</b>}{source}</span>}</div>:<span className="agenda-task"><span className="task-label"><TaskText text={task.text}/></span>{(time||source)&&<small>{time&&<b>{time}{source?' · ':''}</b>}{source}</small>}</span>}
+      })}/>{(time||source)&&<span className="agenda-source">{time&&<b>{time}{source?' · ':''}</b>}{source}</span>}</div>:<span className="agenda-task"><span className="task-label"><TaskText text={task.text}/></span>{(time||source)&&<small data-fit-caption>{time&&<b>{time}{source?' · ':''}</b>}{source}</small>}</span>}
     </div>;
      return props.full?<SwipeTask key={task.id} label={task.text||'Без названия'} pinned={task.pinned} focused={isFocusNote(note)} disabled={props.readOnly} showMenuButton={false}
       onPin={()=>props.onPin?.(note,task)} onFocus={()=>props.onFocus?.(note,task)} onCloud={()=>props.onCloud?.(note,task)} onMore={()=>props.onMore?.(note,task)}>{row}</SwipeTask>:row;
