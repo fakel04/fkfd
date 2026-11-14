@@ -2,6 +2,7 @@
 import { useLayoutEffect, useRef, type TextareaHTMLAttributes } from 'react';
 import {hasTaskBreak,type TaskBreak} from './task-list-edit';
 import {attachTaskInputEvents} from './task-input-events';
+import {resizeTaskInput,observeTaskInputWidth} from './task-input-resize';
 type Props=TextareaHTMLAttributes<HTMLTextAreaElement>&{
  onTaskBreak?:(edit:TaskBreak)=>void;
  onTaskLines?:(value:string,caret:number)=>void;
@@ -9,9 +10,9 @@ type Props=TextareaHTMLAttributes<HTMLTextAreaElement>&{
 export function TaskInput({onTaskBreak,onTaskLines,...props}:Props){
  const ref=useRef<HTMLTextAreaElement>(null);
  const latest=useRef({props,onTaskBreak,onTaskLines});latest.current={props,onTaskBreak,onTaskLines};
- const resize=()=>{const el=ref.current;if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}};
+ const resize=()=>{const el=ref.current;if(el)resizeTaskInput(el)};
  useLayoutEffect(resize,[props.value]);
- useLayoutEffect(()=>{const el=ref.current;if(!el)return;let width=el.clientWidth;const observer=new ResizeObserver(()=>{if(el.clientWidth!==width){width=el.clientWidth;resize()}});observer.observe(el);return()=>observer.disconnect()},[]);
+ useLayoutEffect(()=>{const el=ref.current;if(el)return observeTaskInputWidth(el,resize)},[]);
  useLayoutEffect(()=>{
   const el=ref.current;if(!el)return;
   return attachTaskInputEvents(el,()=>{

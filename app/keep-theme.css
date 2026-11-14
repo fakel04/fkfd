@@ -41,7 +41,7 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
 .editor-top .editor-pin,.editor-top .editor-pin:hover{background:transparent}
 
 /* Compact editor rows, including empty items. Reveal tall swipe controls only on demand. */
-.editor-task-list .swipe-task{margin:0}
+.editor-task-list .swipe-task,.agenda-list .swipe-task{margin:0}
 .editor-task-list .swipe-content,.editor-task-list .swipe-content>.editor-task{min-height:36px;margin:0}
 .editor-task-list .task-menu-trigger{top:0;height:36px}
 @media(max-width:760px){
@@ -149,7 +149,7 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
 
 /* «Сегодня» opened: tasks are edited in place like in any cloud. */
 .agenda-task-edit{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
-.agenda-task-edit .task-input{width:100%;font-size:16px;line-height:1.4;color:#3c4043;background:transparent;border:0;outline:0;resize:none;padding:0}
+.agenda-task-edit .task-input{display:block;width:100%;font-size:16px;line-height:1.4;color:#3c4043;background:transparent;border:0;outline:0;resize:none;overflow:hidden;margin:0;padding:0}
 .agenda-source{align-self:flex-start;font-size:12px;line-height:1.3;color:#5f6368}
 .agenda-source b{font-weight:600}
 /* Utility rows follow the same left edge as the main sidebar navigation. */
