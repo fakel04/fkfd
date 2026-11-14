@@ -353,6 +353,7 @@ export default function Home(){
     <TaskCheckbox done={t.done} focused={t.focused} label={t.text} disabled={!canEdit||n.deleted}
      onToggleDone={()=>patch(n.id,{tasks:n.tasks.map(x=>x.id===t.id?{...x,done:!x.done}:x)})}/>
     <div className="task-copy"><span className="task-label"><TaskText text={t.text}/></span>
+     {isFocusNote(n)&&t.origin&&<small className="task-origin">{sourceTitle(board,t)}</small>}
      <TaskDetails task={t} parentTitle={parentOf(t)?.title}/>
     </div>
    </div></div></div>)}</div>}

@@ -192,3 +192,6 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
 
 /* The panel takes focus only programmatically (for the keyboard trap); no ring around the screen. */
 .modal-panel:focus{outline:none}
+
+/* «Задачи» card: the home cloud under a task, the same caption as in the «Сегодня» card. */
+.task-copy .task-origin{font-size:12px;line-height:1.3;color:#5f6368;overflow-wrap:anywhere}
