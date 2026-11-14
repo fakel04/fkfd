@@ -25,8 +25,9 @@ import { TaskParentPicker } from './task-parent-picker';
 import { createParentResolver, canChooseParent } from './task-relations';
 import { TaskCheckbox } from './task-checkbox';
 import { TaskDetails, TaskText } from './task-details';
-import { buildAgenda, agendaUrgentCount, TODAY_VIEW } from './today-agenda';
+import { buildAgenda, agendaUrgentCount, moveAgendaTask, TODAY_VIEW } from './today-agenda';
 import { localDate } from './task-due';
+import { AgendaTasks } from './agenda-tasks';
 import { expandTaskLines, prepareTaskList } from './task-list-edit';
 import { boardLabels, preserveLabelCatalog, hasLabel, noteHasLabel, taskLabels, taskDueDate, taskDescription, FOCUS_NOTE_ID, pinnedFirst, moveTaskToCloud, ensureFocusBoard, isFocusNote, moveToFocus, returnFromFocus, sourceTitle, type Board, type Note, type Task, type TaskParent } from './board-model';
 import { useState, useEffect, useRef, useMemo, type FormEvent } from 'react';
@@ -297,24 +298,15 @@ export default function Home(){
  const navItem=(id:string,label:string,icon:React.ReactNode,count?:number)=><button className={'nav-item '+(!tagView&&view===id?'active':'')} onClick={()=>nav(id)}>{icon}<span>{label}</span>{count!==undefined&&<small>{count}</small>}</button>;
  /** «Сегодня»: computed from due dates, never stored. Tapping a task opens its cloud. */
  function renderAgenda(full=false){
-  const limit=full?Infinity:10;const total=agenda.reduce((n,g)=>n+g.items.length,0);let shown=0;
+  const total=agenda.reduce((n,g)=>n+g.items.length,0);const shown=full?total:Math.min(total,10);
   const source=(id:string,fallback:Note)=>latest.current.notes.find(n=>n.id===id)??fallback;
   return <article key="__today__" className={'note color-blue today-note'+(full?' today-full':'')} aria-label="Сегодня" onClick={e=>{if(!full&&!(e.target as HTMLElement).closest('.task-checkbox')){nav(TODAY_VIEW);window.scrollTo({top:0})}}}>
    <div className="note-title today-title">Сегодня</div>
    {!total&&<p className="focus-empty">Здесь появятся дела со сроком. Срок ставится в облаке: смахните дело влево → «Ещё» → «Срок».</p>}
-   {agenda.map(group=>{
-    if(shown>=limit)return null;const items=group.items.slice(0,limit-shown);shown+=items.length;
-    return <div className={'agenda-group'+(group.overdue?' overdue':'')} key={group.key}>
-     <div className="agenda-date"><span>{group.label}</span>{group.hint&&<small>{group.hint}</small>}</div>
-     <div className="tasks">{items.map(({note,task,time,source:from})=><div className="task-row agenda-row" key={task.id}>
-      <TaskCheckbox done={task.done} label={task.text||'Без названия'} disabled={!canEdit} onToggleDone={()=>patch(note.id,{tasks:source(note.id,note).tasks.map(x=>x.id===task.id?{...x,done:!x.done}:x)})}/>
-      {full
-       // In the full list a task opens its cloud; on the board card the whole card opens «Сегодня».
-       ?<button type="button" className="agenda-task" onClick={()=>openEditor(source(note.id,note))}><span className="task-label"><TaskText text={task.text||'Без названия'}/></span><small>{time&&<b>{time} · </b>}{from}</small></button>
-       :<span className="agenda-task"><span className="task-label"><TaskText text={task.text||'Без названия'}/></span><small>{time&&<b>{time} · </b>}{from}</small></span>}
-     </div>)}</div>
-    </div>;
-   })}
+   <AgendaTasks groups={agenda} today={todayKey} full={full} readOnly={!canEdit}
+    onMove={(id,date,beforeId)=>{if(!writeAllowed.current||conflict)return;dragEndedAt.current=Date.now();update(current=>moveAgendaTask(current,todayKey,id,date,beforeId));}}
+    onToggle={(note,task)=>patch(note.id,{tasks:source(note.id,note).tasks.map(item=>item.id===task.id?{...item,done:!item.done}:item)})}
+    onOpen={note=>openEditor(source(note.id,note))}/>
    {!full&&total>shown&&<button className="show-all-tasks" aria-label="Показать все дела со сроком" title={'Ещё дел: '+(total-shown)}><span aria-hidden="true">…</span></button>}
   </article>;
  }

@@ -139,3 +139,10 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
 .material-form input,.material-form textarea,.material-form select{width:100%;min-width:0;font-size:16px;padding:10px;border:1px solid #9aa0a6;border-radius:8px;background:transparent;min-height:44px}
 .material-form textarea{resize:vertical}.material-form input:focus-visible,.material-form textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .materials-error{color:#b3261e;font-size:13px;overflow-wrap:anywhere}.materials-error button{min-height:44px;text-decoration:underline}
+
+.agenda-drag-handle{display:flex;align-items:center;justify-content:center;flex:none;width:22px;min-height:32px;padding:0;color:#85898c;touch-action:none;user-select:none;-webkit-user-select:none}
+.agenda-list .agenda-group{padding-bottom:10px;border-radius:6px;min-width:0}
+.agenda-list .agenda-row{min-height:32px}.agenda-drag-source{opacity:.25}
+.agenda-drop-day{background:#4262820a}.agenda-empty-drop{font-size:12px;color:#70757a;padding:12px 5px;min-height:40px;border:1px dashed #9aa0a6;border-radius:5px}
+.agenda-drop-line{position:fixed;height:3px;background:#426282;z-index:1110;pointer-events:none;border-radius:2px}
+.agenda-sorting{user-select:none;-webkit-user-select:none}
