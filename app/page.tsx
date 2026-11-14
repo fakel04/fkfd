@@ -195,8 +195,8 @@ export default function Home(){
   }
   if(target){target.focus({preventScroll:true});const length=target.value.length;target.setSelectionRange(atEnd?length:Math.min(start,length),atEnd?length:Math.min(end,length))}
  }
- function saveEditor(){if(conflict||offline.storageFailed){notify('Сначала сохраните копию и разрешите проблему синхронизации.');return;}if(!writeAllowed.current){setEditor(null);return;}saveEditorWith({})}
- function saveEditorWith(changes:Partial<Note>){if(!editor)return;const n={...editor,...changes,title:editor.title.trim(),tasks:prepareTaskList(editor.tasks)};if(!n.title&&!n.text.trim()&&!n.tasks.length){setEditor(null);return;}if(commitEditor(n)){void save();setEditor(null)}}
+ function saveEditor(){if(conflict||offline.storageFailed){notify('Сначала сохраните копию и разрешите проблему синхронизации.');return false}if(!writeAllowed.current){setEditor(null);return true}return saveEditorWith({})}
+ function saveEditorWith(changes:Partial<Note>){if(!editor)return false;const n={...editor,...changes,title:editor.title.trim(),tasks:prepareTaskList(editor.tasks)};if(!n.title&&!n.text.trim()&&!n.tasks.length){setEditor(null);return true}if(commitEditor(n)){void save();setEditor(null);return true}return false}
  // Closing via Done, Escape or the backdrop saves; only Cancel discards, so ask first.
  function editorDirty(){
   if(!editor)return false;
@@ -294,6 +294,8 @@ export default function Home(){
  const canEdit=writeAllowed.current;
  const canRead=ready;
  function nav(id:string){setTagView(null);setView(id);setSidebar(false);setPalette(null)}
+ const cloudView=!!editor||view===TODAY_VIEW||view==='focus';
+ function showAllClouds(){if(editor&&!saveEditor())return;setQuery('');setOrganizing(false);nav('all');window.scrollTo({top:0})}
  function navTag(label:string){setView('all');setTagView(label);setSidebar(false);setPalette(null)}
  const navItem=(id:string,label:string,icon:React.ReactNode,count?:number)=><button className={'nav-item '+(!tagView&&view===id?'active':'')} onClick={()=>nav(id)}>{icon}<span>{label}</span>{count!==undefined&&<small>{count}</small>}</button>;
  /** «Сегодня»: computed from due dates, never stored. Tapping a task opens its cloud. */
@@ -384,7 +386,7 @@ export default function Home(){
    <header className="topbar">
     <button className="icon-button mobile-menu" aria-label="Открыть меню" onClick={()=>setSidebar(true)}><Menu size={25}/></button>
     <div className="search"><Search size={21}/><input placeholder="Искать в заметках" aria-label="Поиск по облакам" value={query} onChange={e=>setQuery(e.target.value)}/>{query&&<button className="icon-button" aria-label="Очистить поиск" onClick={()=>setQuery('')}><X size={20}/></button>}</div>
-    <button className="icon-button layout-toggle" aria-label={layout==='grid'?'Показать списком':'Показать сеткой'} title={layout==='grid'?'Список':'Сетка'} onClick={()=>chooseLayout(layout==='grid'?'list':'grid')}>{layout==='grid'?<Rows2 size={23}/>:<LayoutGrid size={23}/>}</button>
+    <button className="icon-button layout-toggle" aria-label={cloudView?'Показать все облака':layout==='grid'?'Показать списком':'Показать сеткой'} title={cloudView?'Все облака':layout==='grid'?'Список':'Сетка'} onClick={()=>cloudView?showAllClouds():chooseLayout(layout==='grid'?'list':'grid')}>{cloudView?<LayoutGrid size={23}/>:layout==='grid'?<Rows2 size={23}/>:<LayoutGrid size={23}/>}</button>
     <button className={'icon-button organize-toggle'+(organizing?' selected':'')} aria-label={organizing?'Завершить перестановку':'Переставить облака'} aria-pressed={organizing} title="Переставить облака" disabled={!canEdit} onClick={()=>{setOrganizing(!organizing);setPalette(null)}}><ArrowDownUp size={23}/></button>
     <button className={'account-status'+(error?' has-error':'')} title={status} aria-label={'Состояние сохранения: '+status} onClick={()=>notify(status+(offline.offlineReady?" · Готово к открытию без сети":" · Для подготовки офлайна оставьте страницу открытой с интернетом"))}><span>{session?.name?.slice(0,1)||'А'}</span><i/></button>
    </header>
@@ -418,6 +420,7 @@ export default function Home(){
     else if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(event.key))editorHistory.breakGroup();
    }}>
     <div className="editor-top"><button className="icon-button" aria-label="Назад к облакам" onClick={saveEditor}><ArrowLeft size={23}/></button><span>{isFocusNote(editor)?'ВРЕМЕННЫЙ СПИСОК ДЕЛ':isNew?'НОВОЕ ОБЛАКО':'ВАШЕ ОБЛАКО'}</span>
+     <button className="icon-button cloud-overview-toggle" aria-label="Показать все облака" title="Все облака" onClick={showAllClouds}><LayoutGrid size={20}/></button>
      <button className="icon-button editor-pin" aria-label={editor.pinned?'Открепить облако':'Закрепить облако'} title={editor.pinned?'Открепить облако':'Закрепить облако'} aria-pressed={editor.pinned} disabled={!canEdit||isFocusNote(editor)} onClick={()=>setEditor({...editor,pinned:!editor.pinned})}><Pin size={20} fill={editor.pinned?'currentColor':'none'}/></button>
      <button className="icon-button" aria-label="Сохранить и закрыть" onClick={saveEditor}><X size={22}/></button>
     </div>
