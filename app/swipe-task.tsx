@@ -11,8 +11,8 @@ export function SwipeTask({children, label, pinned, focused, disabled, showMenuB
  const [offset,setOffset]=useState(0); const [moving,setMoving]=useState(false);
  const gesture=useRef<{id:number;x:number;y:number;base:number;dx:number;horizontal:boolean}|null>(null);
  const suppress=useRef(false);
- const width=()=>Math.min(176,(root.current?.clientWidth||300)*.85);
- const moreWidth=()=>Math.min(88,(root.current?.clientWidth||300)*.5);
+ const width=()=>Math.min(128,(root.current?.clientWidth||300)*.7);
+ const moreWidth=()=>Math.min(64,(root.current?.clientWidth||300)*.4);
  function close(){setOffset(0);setMoving(false);gesture.current=null;}
  useEffect(()=>{
   const outside=(e:globalThis.PointerEvent)=>{if(!root.current?.contains(e.target as Node))close()};
@@ -46,11 +46,11 @@ export function SwipeTask({children, label, pinned, focused, disabled, showMenuB
  return <div ref={root} className={'swipe-task'+(offset?' swipe-open':'')} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();close()}}}>
   {!disabled&&<>
    <div className="swipe-actions swipe-left" style={{width:width(),visibility:offset>0?'visible':'hidden'}} inert={offset<=0}>
-    <button type="button" onClick={()=>action(onPin)}>{pinned?<PinOff/>:<Pin/>}<span>{pinned?'Открепить':'Закрепить'}</span></button>
-    <button type="button" onClick={()=>action(focused?onCloud:onFocus)}>{focused?<Cloud/>:<ListChecks/>}<span>{focused?'В облако':'В задачи'}</span></button>
+    <button type="button" aria-label={pinned?'Открепить':'Закрепить'} title={pinned?'Открепить':'Закрепить'} onClick={()=>action(onPin)}>{pinned?<PinOff/>:<Pin/>}</button>
+    <button type="button" aria-label={focused?'В облако':'В задачи'} title={focused?'В облако':'В задачи'} onClick={()=>action(focused?onCloud:onFocus)}>{focused?<Cloud/>:<ListChecks/>}</button>
    </div>
    <div className="swipe-actions swipe-right" style={{width:moreWidth(),visibility:offset<0?'visible':'hidden'}} inert={offset>=0}>
-    <button type="button" aria-label={'Ещё: '+label} onClick={()=>action(onMore)}><MoreHorizontal/><span>Ещё</span></button>
+    <button type="button" aria-label={'Ещё: '+label} title="Ещё" onClick={()=>action(onMore)}><MoreHorizontal/></button>
    </div>
   </>}
   <div className={'swipe-content'+(!showMenuButton?' no-task-menu':'')+(moving?' swiping':'')} style={{transform:`translateX(${offset}px)`}}
