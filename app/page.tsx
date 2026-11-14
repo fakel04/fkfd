@@ -364,13 +364,15 @@ export default function Home(){
    <nav>{categories.map((c,i)=><button className={'nav-item '+(view===c?'active':'')} key={c} onClick={()=>nav(c)}><span className={'category-dot dot-'+(i%5)}/><span>{c}</span><small>{active.filter(n=>n.category===c).length||''}</small></button>)}<button className="nav-item add-topic" onClick={()=>setCategoryModal(true)} disabled={!canEdit}><Plus size={17}/><span>Новая тема</span></button></nav>
    <div className="nav-divider"/><nav>{navItem('archive','Архив',<Archive size={18}/>)}{navItem('trash','Корзина',<Trash2 size={18}/>)}</nav>
    <div className="sidebar-bottom">
-    {canAdmin(session?.role??null)&&<a href="/admin" className="help-link admin-nav"><ShieldCheck size={18}/>Пользователи и доступ</a>}
-    <button className="help-link" onClick={exportBoard}><Download size={18}/>Скачать копию доски</button>
-    {board.notes.some(n=>n.example&&!n.deleted)&&<button className="help-link" onClick={()=>setRemoveExamples(true)} disabled={!canEdit}><X size={18}/>Убрать примеры</button>}
-    <button className="help-link" onClick={()=>setHelp(true)}><CircleHelp size={18}/>Как это работает</button>
+    <nav className="sidebar-actions" aria-label="Действия с доской">
+    {canAdmin(session?.role??null)&&<a href="/admin" className="help-link admin-nav"><ShieldCheck size={18}/><span>Пользователи и доступ</span></a>}
+    <button className="help-link" onClick={exportBoard}><Download size={18}/><span>Скачать копию доски</span></button>
+    {board.notes.some(n=>n.example&&!n.deleted)&&<button className="help-link" onClick={()=>setRemoveExamples(true)} disabled={!canEdit}><X size={18}/><span>Убрать примеры</span></button>}
+    <button className="help-link" onClick={()=>setHelp(true)}><CircleHelp size={18}/><span>Как это работает</span></button>
+    </nav>
     {!!board.imports?.length&&<p className="sidebar-import">Из Todoist: {board.imports.reduce((sum,item)=>sum+item.taskCount,0)} задач</p>}
     <div className="profile"><span className="avatar">А</span><div><strong>{session?.name||'Общее пространство'}</strong><small>{session?roleNames[session.role]:''}</small></div></div>
-    {!demo&&<a href={signOutHref} target="_top" className="help-link" onClick={async e=>{e.preventDefault();await controller.lock();location.assign(signOutHref)}}><LogOut size={18}/>Выйти из аккаунта</a>}
+    {!demo&&<a href={signOutHref} target="_top" className="help-link" onClick={async e=>{e.preventDefault();await controller.lock();location.assign(signOutHref)}}><LogOut size={18}/><span>Выйти из аккаунта</span></a>}
    </div>
   </aside>
   <div className="main-shell">

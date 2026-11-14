@@ -152,3 +152,16 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
 .agenda-task-edit .task-input{width:100%;font-size:16px;line-height:1.4;color:#3c4043;background:transparent;border:0;outline:0;resize:none;padding:0}
 .agenda-source{align-self:flex-start;padding:0;background:none;font-size:12px;line-height:1.3;color:#5f6368;text-align:left}
 .agenda-source b{font-weight:600}
+/* Utility rows follow the same left edge as the main sidebar navigation. */
+.sidebar{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+.sidebar .sidebar-bottom{padding-top:16px;min-width:0;flex-shrink:0}
+.sidebar-actions{display:grid;gap:2px}
+.sidebar-bottom .help-link{display:grid;grid-template-columns:20px minmax(0,1fr);column-gap:11px;align-items:center;justify-content:start;min-height:44px;margin:0;padding:10px 14px;border-radius:8px;text-align:left;line-height:1.4}
+.sidebar-bottom .help-link>svg{width:20px;height:20px;margin:0}
+.sidebar-bottom .help-link>span{min-width:0;overflow-wrap:anywhere}
+.sidebar-bottom .help-link:hover{background:#f1f3f4}
+.sidebar-bottom .sidebar-import{padding:8px 14px 12px}
+.sidebar .profile{padding:14px 8px 6px;gap:8px;min-width:0}
+.sidebar .profile>div{min-width:0;flex:1}
+.sidebar .profile strong{display:block;line-height:1.4;overflow-wrap:anywhere}
+.sidebar .profile .avatar{flex-shrink:0}
