@@ -28,9 +28,6 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
 .keep-layout .note .tasks>.swipe-task{margin:0}
 .keep-layout .note .swipe-content,.keep-layout .note .swipe-content>.task-row{min-height:24px}
 .keep-layout .note .task-menu-trigger{top:0;height:24px}
-.keep-layout .note .swipe-open .swipe-content{min-height:56px}
-.keep-layout .note .swipe-actions button{padding:6px 3px;font-size:11px;gap:4px}
-.keep-layout .note .swipe-actions svg{width:18px;height:18px}
 
 .keep-layout .note .task-source-cloud,.editor-task-content .task-source-cloud{color:#536d85}
 .note-tags-trigger{display:inline-flex;align-items:center;gap:7px;min-height:40px;min-width:0;max-width:100%;padding:8px 10px;border-radius:8px;color:#587447;background:#ffffff45;font-size:14px;text-align:left}.note-tags-trigger>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.note-tags-trigger>svg{flex-shrink:0}.note-tags-trigger:hover{background:#ffffff80}.note-labels{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.note-labels:empty{display:none}.note-label{display:inline-flex;align-items:center;gap:5px;max-width:100%;padding:4px 8px;border-radius:12px;background:#ffffff65;color:#587447;font-size:12px;overflow-wrap:anywhere}.note-label svg{flex-shrink:0}.tag-picker h2{margin-bottom:18px}.tag-search{display:flex;align-items:center;gap:8px;border-bottom:1px solid #dadce0;color:#70757a;padding-bottom:6px}.tag-search>input{border:0;background:transparent;min-width:0;flex:1;margin:0;padding:8px 0;font-size:16px}.tag-choice-list{max-height:45dvh;overflow-y:auto;margin:12px 0;overscroll-behavior:contain}.tag-choice{display:flex;align-items:center;gap:12px;min-height:48px;padding:9px 6px;cursor:pointer;color:#3c4043}.tag-choice:hover{background:#f1f3f4;border-radius:8px}.tag-choice>input{width:19px;height:19px;margin:0;accent-color:#587447;flex:0 0 19px}.tag-choice>svg{color:#708360;flex-shrink:0}.tag-choice>span{overflow-wrap:anywhere;min-width:0}.tag-create{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:13px 6px;font-size:14px;color:#587447;overflow-wrap:anywhere}.tag-picker-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;color:#70757a}.tag-picker-footer .text-button{font-size:13px}.tag-picker .modal-actions{margin-top:14px}.tag-empty{font-size:14px;line-height:1.5}.note-tags-trigger:focus-visible,.note-label:focus-visible,.tag-create:focus-visible{outline:2px solid #6b8197;outline-offset:2px}
@@ -48,9 +45,6 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
  .task-menu-trigger{display:none}
  .swipe-content{padding-right:0}
 }
-.editor-task-list .swipe-open .swipe-content{min-height:56px}
-.editor-task-list .swipe-actions button{padding:6px 3px;font-size:11px;gap:4px}
-.editor-task-list .swipe-actions svg{width:18px;height:18px}
 
 /* Quiet undo / redo beside the cloud palette; keep the caret when tapped. */
 .editor-history-controls{display:flex;align-items:center;justify-content:center;gap:4px;margin-left:auto;flex-shrink:0}
@@ -189,3 +183,9 @@ main{padding:4px 26px 100px;max-width:1500px}.context-heading{font-size:20px;let
  .modal-overlay:has(.editor){background:var(--open-cloud-bg,#fff);overscroll-behavior:none}
  .modal-panel:has(.editor){background:var(--open-cloud-bg,#fff);overscroll-behavior:none}
 }
+
+/* Swipe actions are icons only, centred in equal cells; their names are in aria-label and title.
+   An open row is at least 44px tall so every icon stays an easy tap target. */
+.swipe-actions button{padding:0;gap:0}
+.swipe-actions svg{width:22px;height:22px}
+.swipe-open .swipe-content,.keep-layout .note .swipe-open .swipe-content,.agenda-list .swipe-open .swipe-content{min-height:44px}
