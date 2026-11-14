@@ -19,7 +19,7 @@ type Drag = {
   x: number; y: number; active: boolean; handle: HTMLButtonElement; lift?:TaskLift;
 };
 
-export function EditorTaskList({ tasks, onChange, onToggleFocus, onMoveToCloud, onMore, getSourceTitle, getParentTitle, focusMode=false, readOnly=false }: { tasks: Task[]; onChange: (tasks: Task[],group?:string) => void; onToggleFocus?: (id:string)=>void; getSourceTitle?: (task:Task)=>string; getParentTitle?: (task:Task)=>string|undefined; onMoveToCloud:(id:string)=>void; onMore:(id:string)=>void; focusMode?:boolean;readOnly?:boolean }) {
+export function EditorTaskList({ tasks, onChange, onToggleFocus, onMoveToCloud, onMore, getSourceTitle, getParentTitle, focusMode=false, readOnly=false, filesOn }: { filesOn?: ReadonlySet<string>; tasks: Task[]; onChange: (tasks: Task[],group?:string) => void; onToggleFocus?: (id:string)=>void; getSourceTitle?: (task:Task)=>string; getParentTitle?: (task:Task)=>string|undefined; onMoveToCloud:(id:string)=>void; onMore:(id:string)=>void; focusMode?:boolean;readOnly?:boolean }) {
   const motion = useTaskCompletionMotion(tasks);
   const root = useRef<HTMLDivElement>(null);
   const current = useRef({ tasks, onChange, readOnly });
@@ -167,7 +167,7 @@ export function EditorTaskList({ tasks, onChange, onToggleFocus, onMoveToCloud, 
           onChange={event => onChange(tasks.map(item => item.id === task.id ? { ...item, text: event.target.value } : item),'task:'+task.id)}
           onTaskBreak={edit=>breakTask(task.id,edit)}
           onTaskLines={(value,caret)=>splitInputLines(task.id,value,caret)}/>
-        <TaskMarkers task={task} cloud={task.focused && task.origin ? (getSourceTitle?.(task) || task.origin.title) : undefined}/>
+        <TaskMarkers task={task} hasFiles={!!filesOn?.has(task.id)} cloud={task.focused && task.origin ? (getSourceTitle?.(task) || task.origin.title) : undefined}/>
         <TaskDetails task={task} parentTitle={getParentTitle?.(task)}/>
         </div>
       </div></SwipeTask>;

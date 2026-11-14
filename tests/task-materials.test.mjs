@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {readFileSync,readdirSync} from 'node:fs';
 import {materialInput,materialUrl,MAX_FILE_BYTES} from '../app/task-materials-model.ts';
-import {createMaterial,listMaterials,updateMaterial,deleteMaterial,uploadMaterial,downloadMaterial} from '../app/task-materials-store.ts';
+import {createMaterial,listMaterials,updateMaterial,deleteMaterial,uploadMaterial,downloadMaterial,tasksWithFiles} from '../app/task-materials-store.ts';
 import {readMaterialBody} from '../app/task-materials-request.ts';
 import {ensureMaterialsBucket} from '../scripts/cloudflare/materials-bucket.mjs';
 
@@ -81,4 +81,15 @@ test('R2 provisioning reuses an existing bucket, creates a missing one, and fail
  await ensureMaterialsBucket({...options,fetchImpl:async(url,init)=>{calls.push({url,...init});return new Response('{}',{status:calls.length===1?404:200})}});
  assert.equal(calls.length,2);assert.equal(calls[1].method,'POST');assert.deepEqual(JSON.parse(calls[1].body),{name:'oblaka-materials'});
  await assert.rejects(()=>ensureMaterialsBucket({...options,fetchImpl:async()=>new Response('{}',{status:403})}),/Workers R2 Storage/);
+});
+
+test('the paperclip list names only visible tasks with a file, never comments-only or hidden ones',async()=>{
+ const {db,owner,member,bucket}=setup();
+ const file=name=>new File(['x'],name);
+ await uploadMaterial(db,bucket,owner,'task',file('a.txt'));
+ await uploadMaterial(db,bucket,owner,'secret-task',file('b.txt'));
+ await createMaterial(db,owner,'focused',summary());
+ assert.deepEqual((await tasksWithFiles(db,owner)).sort(),['secret-task','task']);
+ assert.deepEqual(await tasksWithFiles(db,member),['task']);
+ assert.deepEqual(await tasksWithFiles(db,{...owner,boardId:'other-board'}),[]);
 });
