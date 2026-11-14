@@ -11,8 +11,11 @@ async function responseBody(response:Response){
 function safeHref(value:string){try{return materialUrl(value)}catch{return ''}}
 const empty:MaterialInput={kind:'summary',text:'',title:'',source:'other',sourceUrl:'',url:''};
 
-export function TaskMaterials({task}:{task:Task}){
+export function TaskMaterials({task,onFiles}:{task:Task;onFiles?:(taskId:string,hasFiles:boolean)=>void}){
  const [items,setItems]=useState<TaskMaterial[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ // Keeps the paperclip marker in the open cloud in step with uploads and deletions.
+ const reportFiles=useRef(onFiles);reportFiles.current=onFiles;
+ useEffect(()=>{if(!loading)reportFiles.current?.(task.id,items.some(item=>item.kind==='file'))},[items,loading,task.id]);
  const [selectedFile,setSelectedFile]=useState<File|null>(null);
  const [uploads,setUploads]=useState(false),[editing,setEditing]=useState<TaskMaterial|'new'|null>(null),[draft,setDraft]=useState<MaterialInput>(empty),[confirmDelete,setConfirmDelete]=useState<string|null>(null);
  const fileInput=useRef<HTMLInputElement>(null);const base=materialBase(task.id);

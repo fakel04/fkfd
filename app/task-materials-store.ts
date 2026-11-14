@@ -62,3 +62,12 @@ export async function downloadMaterial(db:D1Database,bucket:R2Bucket|undefined,s
  const object=await bucket.get(row.file_key);if(!object)throw new AccessError('Файл не найден.',404);
  return new Response(object.body,{headers:{'Content-Type':'application/octet-stream','Content-Disposition':"attachment; filename*=UTF-8''"+encodeURIComponent(attachmentName(row.file_name||'Вложение')).replace(/['()*]/g,c=>'%'+c.charCodeAt(0).toString(16)), 'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"sandbox; default-src 'none'"}});
 }
+
+/** Visible tasks that have at least one attached file, for the paperclip marker. Same access as reading the board. */
+export async function tasksWithFiles(db:D1Database,session:Session):Promise<string[]>{
+ const {data}=await readBoardFor(db,session);
+ const visible=new Set<string>();for(const note of (data?.notes??[]) as Note[])if(!note.deleted)for(const task of note.tasks)visible.add(task.id);
+ if(!visible.size)return [];
+ const rows=await db.prepare("SELECT DISTINCT task_id FROM task_materials WHERE board_id = ? AND kind = 'file'").bind(session.boardId).all<{task_id:string}>();
+ return rows.results.map(row=>row.task_id).filter(id=>visible.has(id));
+}
